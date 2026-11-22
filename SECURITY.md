@@ -4,6 +4,8 @@
 
 Có một đường truy cập mạng không xác thực tới web UI có thể chạy dưới quyền root trong cấu hình Magisk, cùng một số đường thực thi mã bên ngoài ranh giới tin cậy. Không phát hiện credential thực trong cây hiện tại hay Git history đã kiểm tra. Không tìm thấy `chmod 777` hoặc tham chiếu/quyền Shizuku. Đã bổ sung một rule `.gitignore` cho `SOUL.md`; không thay đổi installer hay luồng cài đặt.
 
+Phạm vi rà soát là commit nền `2f19530` và Git history có sẵn trong worktree `fix/security`; các thay đổi đang phát triển ở nhánh khác không nằm trong lần rà soát này. Cần rà lại sau khi tích hợp các nhánh tính năng và trước khi phát hành, nhất là khi thêm đường chạy mới như Shizuku hoặc Termux no-root.
+
 ## Phát hiện cần xử lý
 
 ### Critical (P0) — Web UI không xác thực, bind mọi giao diện và có thể chạy dưới quyền root
