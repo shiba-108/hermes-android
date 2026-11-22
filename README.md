@@ -33,7 +33,7 @@ Chụp ngay từ Telegram — máy chủ AI chạy trong túi bạn, điều khi
 
 ## ⚡ Quick Start
 
-**Yêu cầu duy nhất:** Android 12+ đã root Magisk (hoặc Termux), cắm sạc, có Wi-Fi.
+**Yêu cầu tối thiểu:** Android 12+, cắm sạc, có Wi-Fi. **Không cần root** để chạy bot cơ bản — root Magisk chỉ cần cho chế độ full (auto-start + watchdog + DoH). Installer tự nhận diện và báo rõ.
 
 ```sh
 curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
@@ -69,7 +69,7 @@ chạy một process Python và giữ kết nối Telegram.
 
 ### What is this?
 
-`hermes-android` turns a rooted Android phone into a self-healing **24/7 AI server** that runs the [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway on-device and exposes it to you through **Telegram** — no VPS, no monthly bill, running only **free-tier models**.
+`hermes-android` turns an old Android phone into a **24/7 AI server** that runs the [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway on-device and exposes it to you through **Telegram** — no VPS, no monthly bill, running only **free-tier models**. Works on **non-rooted Termux** (basic bot) and unlocks the full self-healing stack (auto-start, watchdog, DoH) with **Magisk root**.
 
 - 🤖 Hermes Agent gateway runs 24/7 on the phone (Magisk `service.d` + watchdog).
 - 💬 Chat with it anywhere via Telegram (or a web UI over Tailscale — see [`web/`](web/)).
@@ -79,11 +79,25 @@ chạy một process Python và giữ kết nối Telegram.
 
 ### Requirements
 
-- **Android 12+**, rooted with **Magisk** (recommended) or plain **Termux**.
+| | **Không root (Termux)** | **Có root (Magisk)** ✅ khuyến nghị |
+|---|---|---|
+| Bot cơ bản (chat Telegram) | ✅ chạy được | ✅ |
+| Auto-start sau reboot | ❌ phải chạy tay | ✅ `service.d` |
+| Watchdog (tự hồi sinh 24/7) | ❌ | ✅ |
+| DoH + iptables NAT | ❌ | ✅ |
+| Dọn app / battery | ❌ | ✅ |
+| **Phù hợp với** | máy chưa root, dùng thử | máy cắm sạc chạy 24/7 |
+
+- **Android 12+.** Không root vẫn chạy được bot cơ bản; **có root (Magisk) mới chạy full** (auto-start + watchdog + DoH + dọn app).
 - **6 GB RAM+** (8–12 GB recommended). 3 GB works but is tight.
 - ~4 GB free storage, a wall charger, and Wi-Fi.
 - A Telegram bot token ([BotFather](https://t.me/BotFather)) and an OpenRouter account (free).
 - See [`docs/DEVICES.md`](docs/DEVICES.md) for tested devices & per-device notes.
+
+> **Không root?** Installer tự bỏ qua `service.d/` và in rõ
+> `CHẾ ĐỘ: NOROOT`. Sau mỗi lần reboot, chạy tay:
+> `sh $HERMES_HOME/scripts/start-manual.sh` (bot cơ bản vẫn chạy bình thường).
+> Muốn full → root bằng Magisk theo `docs/DEVICES.md` rồi chạy lại installer.
 
 ### Quick start (1 command)
 
@@ -91,7 +105,7 @@ chạy một process Python và giữ kết nối Telegram.
 curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
 ```
 
-The installer is **idempotent** — safe to re-run. It backs up every file it replaces (`.bak.<timestamp>`), detects Magisk vs Termux, sets up the venv from the pinned Android lock file, installs `service.d/` scripts + skills, and runs `sh -n` on every script before finishing.
+The installer is **idempotent** — safe to re-run. It backs up every file it replaces (`.bak.<timestamp>`), auto-detects root/Magisk vs non-root Termux (non-root skips `service.d/` and prints `CHẾ ĐỘ: NOROOT`), sets up the venv from the pinned Android lock file, installs `scripts/` + skills, and runs `sh -n` on every script before finishing.
 
 Then set your secrets once:
 
@@ -102,6 +116,7 @@ TELEGRAM_BOT_TOKEN=123456:ABC...
 ```
 
 Reboot the phone. Open Telegram, message your bot. Done.
+(No root: after each reboot run `sh $HERMES_HOME/scripts/start-manual.sh` first.)
 
 ### Free models only
 
@@ -147,7 +162,7 @@ hermes-android/
 ├── BI-KIP.md              # field notes: commands, pitfalls, fixes
 ├── install.sh             # idempotent installer (Magisk + Termux)
 ├── service.d/             # Magisk boot scripts (root)
-├── scripts/               # preflight_venv, backup, make_lock
+├── scripts/               # preflight_venv, backup, make_lock, start-manual (no-root)
 ├── locks/                 # pinned venv requirements (Android-safe)
 ├── skills/                # Hermes skills (sys-status, sys-logs, ...)
 ├── web/                   # self-hosted chat UI (Tailscale :3000)
@@ -168,7 +183,7 @@ MIT — do whatever you want, no warranty. See [`LICENSE`](LICENSE).
 
 ### Đây là gì?
 
-`hermes-android` biến một chiếc điện thoại Android đã root thành **máy chủ AI 24/7 tự phục hồi**, chạy [Hermes Agent](https://github.com/NousResearch/hermes-agent) ngay trên máy và điều khiển qua **Telegram** — không cần VPS, không hóa đơn hàng tháng, chỉ dùng **model miễn phí**.
+`hermes-android` biến một chiếc điện thoại Android cũ thành **máy chủ AI 24/7**, chạy [Hermes Agent](https://github.com/NousResearch/hermes-agent) ngay trên máy và điều khiển qua **Telegram** — không cần VPS, không hóa đơn hàng tháng, chỉ dùng **model miễn phí**. Chạy được trên **Termux không root** (bot cơ bản), và mở khoá full bộ tự phục hồi (auto-start, watchdog, DoH) khi có **root Magisk**.
 
 - 🤖 Gateway Hermes chạy 24/7 trên điện thoại (Magisk `service.d` + watchdog).
 - 💬 Nhắn tin với nó ở bất cứ đâu qua Telegram (hoặc web UI qua Tailscale — xem [`web/`](web/)).
@@ -178,11 +193,25 @@ MIT — do whatever you want, no warranty. See [`LICENSE`](LICENSE).
 
 ### Yêu cầu
 
-- **Android 12+**, đã root **Magisk** (khuyến nghị) hoặc **Termux** thuần.
+| | **Không root (Termux)** | **Có root (Magisk)** ✅ khuyến nghị |
+|---|---|---|
+| Bot cơ bản (chat Telegram) | ✅ chạy được | ✅ |
+| Auto-start sau reboot | ❌ phải chạy tay | ✅ `service.d` |
+| Watchdog (tự hồi sinh 24/7) | ❌ | ✅ |
+| DoH + iptables NAT | ❌ | ✅ |
+| Dọn app / pin | ❌ | ✅ |
+| **Hợp với** | máy chưa root, dùng thử | máy cắm sạc chạy 24/7 |
+
+- **Android 12+.** Không root vẫn chạy được bot cơ bản; **có root (Magisk) mới chạy full** (auto-start + watchdog + DoH + dọn app).
 - **RAM 6 GB+** (khuyến nghị 8–12 GB). 3 GB chạy được nhưng chật.
 - ~4 GB trống, cắm sạc, có Wi-Fi.
 - Token bot Telegram ([BotFather](https://t.me/BotFather)) + tài khoản OpenRouter (free).
 - Xem [`docs/DEVICES.md`](docs/DEVICES.md) để biết máy đã test và lưu ý từng dòng.
+
+> **Không root?** Installer tự bỏ qua `service.d/` và in rõ
+> `CHẾ ĐỘ: NOROOT`. Sau mỗi lần reboot, chạy tay:
+> `sh $HERMES_HOME/scripts/start-manual.sh` (bot cơ bản vẫn chạy bình thường).
+> Muốn full → root bằng Magisk theo `docs/DEVICES.md` rồi chạy lại installer.
 
 ### Cài đặt (1 lệnh)
 
@@ -201,6 +230,7 @@ TELEGRAM_BOT_TOKEN=123456:ABC...
 ```
 
 Reboot máy → mở Telegram → nhắn cho bot. Xong.
+(Không root: sau reboot chạy tay `sh $HERMES_HOME/scripts/start-manual.sh` trước.)
 
 ### Model miễn phí
 
@@ -246,7 +276,7 @@ hermes-android/
 ├── BI-KIP.md              # bí kíp: lệnh, lỗi, cách sửa
 ├── install.sh             # installer idempotent (Magisk + Termux)
 ├── service.d/             # script boot Magisk (root)
-├── scripts/               # preflight_venv, backup, make_lock
+├── scripts/               # preflight_venv, backup, make_lock, start-manual (no-root)
 ├── locks/                 # ghim requirements venv (an toàn Android)
 ├── skills/                # skill Hermes (sys-status, sys-logs, ...)
 ├── web/                   # web chat (Tailscale :3000)
@@ -284,7 +314,7 @@ Qua Telegram (mọi lúc mọi nơi) hoặc web UI qua Tailscale (`web/`).
 `.env`, `auth.json`, `config.yaml`, `sessions/` đều nằm trong `.gitignore`. `scripts/backup.sh` mã hóa age trước khi đẩy lên repo private.
 
 **Q: Không root được thì sao?**
-Vẫn chạy được trên Termux thuần, nhưng thiếu mấy script `service.d/` (root). Xem `install.sh` phần auto-detect.
+Vẫn chạy được bot cơ bản trên Termux thuần — chỉ thiếu auto-start + watchdog + DoH + dọn app (những thứ cần root). Installer tự phát hiện và in `CHẾ ĐỘ: NOROOT`; sau mỗi lần reboot chạy tay `sh $HERMES_HOME/scripts/start-manual.sh`. Muốn full thì root bằng Magisk (`docs/DEVICES.md`) rồi cài lại.
 
 **Q: Điện thoại mới, chưa root, làm sao bắt đầu?**
 Root bằng Magisk theo `docs/DEVICES.md` cho đúng dòng máy của bạn, rồi chạy lệnh cài 1 dòng ở trên.

@@ -14,9 +14,10 @@ Thu thập từ skill `sys-status`, `sys-logs`, `sys-restart`, `sys-maintenance`
 8. [Model free + lỗi menu /model cache 63 con](#8-model-free--lỗi-menu-model-cache-63-con)
 9. [Set model bằng config set](#9-set-model-bằng-config-set)
 10. [SSH key + lỗi Permission denied publickey](#10-ssh-key--lỗi-permission-denied-publickey)
-11. [Web UI (port 3000)](#11-web-ui-port-3000)
-12. [Backup](#12-backup)
-13. [Pitfalls](#pitfalls)
+11. [Chạy không root vs có root](#11-chạy-không-root-vs-có-root)
+12. [Web UI (port 3000)](#12-web-ui-port-3000)
+13. [Backup](#13-backup)
+14. [Pitfalls](#pitfalls)
 
 ---
 
@@ -179,7 +180,27 @@ Nếu vẫn lỗi:
 - Đảm bảo repo remote đúng: `git remote -v` → `git@github.com:shiba-108/hermes-android.git`.
 - Nếu dùng `https://` remote, đổi sang SSH: `git remote set-url origin git@github.com:shiba-108/hermes-android.git`.
 
-## 11. Web UI (port 3000)
+## 11. Chạy không root vs có root
+
+Installer tự detect và in chế độ khi chạy:
+
+| Chế độ | Điều kiện | Làm được | Sau reboot |
+|---|---|---|---|
+| `FULL` | root + Magisk | full: auto-start + watchdog + DoH + dọn app | tự chạy |
+| `ROOT-NOMAGISK` | root, không Magisk | bot chạy tay | phải tự thêm vào boot |
+| `NOROOT` | không root | bot cơ bản (chat Telegram) | chạy tay `start-manual.sh` |
+
+**Không root:** installer bỏ qua `service.d/`, in `CHẾ ĐỘ: NOROOT`. Sau mỗi lần reboot:
+
+```sh
+sh $HERMES_HOME/scripts/start-manual.sh
+```
+
+`start-manual.sh` nạp env + preflight venv + `nohup hermes gateway run &` (và webui nếu có). Idempotent.
+
+**Nâng lên full:** root bằng Magisk (theo `docs/DEVICES.md`) → chạy lại `install.sh` → tự cài `service.d/`.
+
+## 12. Web UI (port 3000)
 
 ```sh
 scripts/webui.sh start     # nohup, PID ở ~/webui.pid
@@ -191,7 +212,7 @@ scripts/webui.sh stop / restart
 - Watchdog `05-watchdog.sh` tự revive webui nếu chết.
 - Chi tiết: `web/README.md`.
 
-## 12. Backup
+## 13. Backup
 
 ```sh
 scripts/backup.sh          # tạo archive mã hoá age vào backups/
@@ -202,7 +223,7 @@ scripts/backup.sh --drive  # đẩy lên Google Drive (rclone 'gdrive')
 - Chỉ đẩy file `.enc` (đã mã hoá). Private key KHÔNG BAO GIỜ lên git.
 - Chi tiết: `docs/BACKUP.md`.
 
-## Pitfalls
+## 14. Pitfalls
 
 - `pgrep -af <pattern>` khớp cả shell snapshot của lệnh terminal (cmdline chứa pattern) → PID rác.
   Dùng `pgrep -f` hoặc `ps -eo pid,etime,args | grep -E ... | grep -v 'bash -c'`.

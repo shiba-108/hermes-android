@@ -47,10 +47,29 @@ TS=$(date +%Y%m%d-%H%M%S)
 IS_MAGISK=0
 IS_ROOT=0
 [ "$(id -u 2>/dev/null)" = "0" ] && IS_ROOT=1
+# su có thể có nhưng chưa cấp (Magisk prompt) — thử kiểm tra khả dụng
+if [ "$IS_ROOT" = "0" ] && command -v su >/dev/null 2>&1; then
+  if echo "id" | su -c "id" 2>/dev/null | grep -q "uid=0"; then
+    IS_ROOT=1
+  fi
+fi
 if [ -d /data/adb/magisk ] || [ -d /data/adb/modules ] || command -v magisk >/dev/null 2>&1; then
   IS_MAGISK=1
 fi
+
+# Xác định chế độ chạy
+if [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" ]; then
+  MODE="FULL"
+  MODE_DESC="có root (Magisk) — auto-start boot + watchdog + DoH + dọn app"
+elif [ "$IS_ROOT" = "1" ]; then
+  MODE="ROOT-NOMAGISK"
+  MODE_DESC="có root nhưng KHÔNG có Magisk — service.d không chạy, cần tự thêm vào boot"
+else
+  MODE="NOROOT"
+  MODE_DESC="không root — chỉ chạy bot cơ bản, reboot phải chạy tay"
+fi
 echo "==> HERMES_HOME=$HM | root=$IS_ROOT | magisk=$IS_MAGISK"
+echo "==> CHẾ ĐỘ: $MODE — $MODE_DESC"
 
 mkdir -p "$HM/scripts" "$HM/backups" "$HM/logs" 2>/dev/null || true
 if [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" ]; then
@@ -75,7 +94,9 @@ if [ -d "$REPO_DIR/service.d" ] && [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" 
     echo "  install $SD/$b"
   done
 else
-  echo "==> Bỏ qua service.d (cần root + Magisk). Termux thuần dùng nohup/watchdog thủ công."
+  echo "==> Bỏ qua service.d ($MODE_DESC)"
+  echo "    → KHÔNG có auto-start sau reboot. Sau mỗi lần reboot, chạy tay:"
+  echo "      sh \$HERMES_HOME/scripts/start-manual.sh"
 fi
 
 # ---------------------------------------------------------------------------
@@ -179,11 +200,20 @@ fi
 # ---------------------------------------------------------------------------
 echo
 echo "============================================================"
-echo " Xong."
+echo " Xong. Chế độ: $MODE"
 echo "   HERMES_HOME : $HM"
 echo "   venv        : $VENV"
 echo "   agent dir   : $AGENT"
-[ "$IS_MAGISK" = "1" ] && [ "$IS_ROOT" = "1" ] && echo " service.d  : $SD (có hiệu lực sau reboot)"
+if [ "$MODE" = "FULL" ]; then
+  echo " service.d  : $SD (có hiệu lực sau reboot — auto-start + watchdog)"
+elif [ "$MODE" = "ROOT-NOMAGISK" ]; then
+  echo " service.d  : bỏ qua (không có Magisk). Tự thêm script vào boot của bạn."
+  echo "   Sau reboot chạy tay: sh $HM/scripts/start-manual.sh"
+else
+  echo " ⚠  CHẾ ĐỘ KHÔNG ROOT — bot cơ bản chạy tay, KHÔNG tự sống sau reboot."
+  echo "   Sau mỗi lần reboot chạy: sh $HM/scripts/start-manual.sh"
+  echo "   Để có full (auto-start/watchdog/DoH): root bằng Magisk rồi cài lại."
+fi
 echo
 echo " Bước tiếp theo:"
 echo "   1) Khai báo secret trong $HM/.env"

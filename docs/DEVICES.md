@@ -35,9 +35,12 @@ cho cộng đồng.
 - **OnePlus / Nothing:** unlock bootloader → flash `boot.img` đã patch.
 - **Samsung:** dùng Odin + Magisk patch `AP_*.tar.md5` (tắt auto-reboot trong Odin).
 - **Xiaomi:** unlock bootloader (chờ 7 ngày) → fastboot flash boot đã patch.
-- **Không root được:** vẫn chạy được bằng Termux thuần — xem `install.sh` phần
-  "Bỏ qua service.d". Bù lại phải tự chạy `nohup .../hermes gateway run &` và tự
-  watchdog thủ công (Termux:Boot addon).
+- **Không root được:** vẫn chạy được bot cơ bản bằng Termux thuần. Installer tự
+  phát hiện và in `CHẾ ĐỘ: NOROOT`, bỏ qua `service.d/`. Sau mỗi lần reboot chạy tay:
+  `sh $HERMES_HOME/scripts/start-manual.sh`. Thiếu auto-start + watchdog + DoH +
+  dọn app (những thứ cần root). Muốn full → root Magisk theo hướng dẫn trên rồi cài lại.
+  (Tuỳ chọn: dùng addon **Termux:Boot** để tự chạy `start-manual.sh` khi mở máy —
+  không thay thế được watchdog 24/7 của root.)
 
 ## ⚡ Mẹo theo RAM
 
