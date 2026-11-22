@@ -56,6 +56,7 @@ The optional `scripts/shizuku-setup.sh` helper uses Shizuku's `rish` shell bridg
 - **Web UI:** it has no authentication. No-root defaults to `127.0.0.1`; remote binding requires explicitly setting `WEBUI_HOST`. The existing root default is `0.0.0.0`, which listens on all interfaces. Do not expose the unauthenticated UI to an untrusted network or the public internet. See [`web/README.md`](web/README.md).
 - **Root-only helpers:** the Magisk `service.d/` scripts are not made available to ordinary Termux by changing `HERMES_HOME` or starting Shizuku.
 - **Root-script side effects:** review `service.d/` before using it. `02-adbd.sh` sets ADB-over-TCP on port 5555 and restarts `adbd`; avoid untrusted networks. `04-doh.sh` starts a local proxy and adds a root `iptables` NAT rule. These are separate from the no-root Shizuku helper.
+- **Preflight lock risk:** `scripts/preflight_venv.sh` currently interpolates lock entries into Python source. Until fixed, do not run it with an untrusted lock or one a less-privileged account can modify, especially in a root/Magisk context.
 - **Secrets and backups:** never commit credentials, session data, private configuration, or unredacted logs. If encryption tools or a recipient are not configured, `scripts/backup.sh` can leave a plaintext archive on-device; do not upload it. Read [`docs/BACKUP.md`](docs/BACKUP.md) first.
 
 ### Project notes
@@ -116,6 +117,7 @@ Helper Shizuku tùy chọn `scripts/shizuku-setup.sh` chỉ dùng cầu nối sh
 - **Web UI:** không có xác thực. No-root mặc định chỉ bind `127.0.0.1`; muốn truy cập từ xa phải chủ động đặt `WEBUI_HOST`. Root vẫn mặc định bind `0.0.0.0`, tức nghe trên mọi giao diện mạng. Không mở UI không xác thực ra mạng không tin cậy hoặc Internet công cộng. Xem [`web/README.md`](web/README.md).
 - **Helper chỉ dành cho root:** đổi `HERMES_HOME` hay khởi động Shizuku không làm các script Magisk trong `service.d/` chạy được trong Termux thông thường.
 - **Tác động của script root:** xem kỹ `service.d/` trước khi dùng. `02-adbd.sh` đặt ADB-over-TCP ở cổng 5555 và khởi động lại `adbd`; tránh dùng trên mạng không tin cậy. `04-doh.sh` chạy proxy cục bộ và thêm quy tắc NAT `iptables` cần root. Đây là các tính năng riêng của luồng root, không phải helper Shizuku no-root.
+- **Rủi ro lock cho preflight:** `scripts/preflight_venv.sh` hiện nội suy các dòng trong lock vào mã Python. Cho đến khi được sửa, không chạy script với lock không tin cậy hoặc lock mà tài khoản ít quyền có thể sửa, nhất là trong ngữ cảnh root/Magisk.
 - **Secret và sao lưu:** không commit credential, dữ liệu phiên, cấu hình riêng tư hoặc log chưa che. Nếu thiếu công cụ/recipient mã hóa, `scripts/backup.sh` có thể để lại archive plaintext trên máy; không tải archive đó lên. Đọc [`docs/BACKUP.md`](docs/BACKUP.md) trước.
 
 ### Ghi chú dự án
