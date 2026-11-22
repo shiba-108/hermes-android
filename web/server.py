@@ -12,9 +12,9 @@ Python stdlib, so it runs inside the same venv as the gateway.
 Usage:
     HERMES_HOME=/data/local/hermes-home python3 web/server.py [--port 3000]
 
-Security: bind to the Tailscale IP when you want remote access only; default
-binds to 0.0.0.0 so it is reachable over Tailscale and LAN. Put it behind an
-SSH tunnel / Tailscale ACL if exposed beyond your tailnet.
+Security: this UI has no authentication. Non-root defaults to loopback; root
+keeps the existing 0.0.0.0 default for compatibility. Prefer loopback plus
+Tailscale Serve for private remote access; do not expose it directly to the Internet.
 """
 import argparse
 import json
@@ -25,8 +25,8 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERMES_HOME = os.environ.get("HERMES_HOME", "/data/local/hermes-home")
-BIN = os.path.join(HERMES_HOME, "..", "hermes-venv", "bin", "hermes")
-BIN = os.path.abspath(BIN)
+HERMES_VENV = os.environ.get("HERMES_VENV") or os.path.join(HERMES_HOME, "..", "hermes-venv")
+BIN = os.path.abspath(os.path.join(HERMES_VENV, "bin", "hermes"))
 LOG_PATH = os.path.join(HERMES_HOME, "logs", "webui.log")
 
 INDEX_HTML = """<!doctype html>
@@ -176,10 +176,15 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, {"reply": gateway_reply(msg)})
 
 
+def default_host():
+    """Keep the unauthenticated UI local for non-root; preserve root behavior."""
+    return "0.0.0.0" if os.geteuid() == 0 else "127.0.0.1"
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=3000)
-    ap.add_argument("--host", default="0.0.0.0")
+    ap.add_argument("--host", default=default_host())
     args = ap.parse_args()
     os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
     srv = ThreadingHTTPServer((args.host, args.port), Handler)

@@ -1,13 +1,11 @@
-# Web UI — chat với bot qua Tailscale (port 3000)
+# Web UI — chat với bot (cổng 3000)
 
-Một web chat self-hosted, chạy trên điện thoại. Web UI **không có xác thực**: ai truy cập được cổng có thể gửi lệnh chat qua gateway. Không mở trực tiếp ra Internet.
+Web UI self-hosted chạy trên điện thoại. Ứng dụng **không có xác thực**: bất kỳ ai truy cập được cổng đều có thể gửi lệnh chat qua Hermes gateway. Không mở trực tiếp ra Internet.
 
-## Yêu cầu
+## Yêu cầu và chạy
 
 - Đã cài hermes-agent + gateway (xem `install.sh`).
-- Web UI chỉ nên dùng trên giao diện mạng tin cậy; Tailscale là lựa chọn phù hợp nếu cấu hình bind đúng địa chỉ.
-
-## Chạy
+- Cổng mặc định là **3000**; đổi bằng `WEBUI_PORT=8080`.
 
 ```sh
 scripts/webui.sh start
@@ -16,34 +14,44 @@ scripts/webui.sh stop
 scripts/webui.sh restart
 ```
 
-Mặc định cổng **3000**. Đổi bằng `WEBUI_PORT=8080`.
+## Bind và truy cập từ xa an toàn
 
-## Giao diện lắng nghe và bảo mật
-
-- **Termux không root:** mặc định chỉ bind `127.0.0.1`, vì UI không có auth. Vì vậy máy khác không thể truy cập cho đến khi người dùng chủ động chọn host.
-- **Root:** mặc định giữ hành vi cũ là bind `0.0.0.0` trên mọi giao diện để không làm đổi root flow. Vì UI không có auth, điều này có thể lộ UI trên LAN/Tailscale; không forward cổng ra Internet.
-- Nếu cần truy cập từ xa ở chế độ no-root, ưu tiên bind đúng địa chỉ Tailscale của điện thoại, ví dụ:
+- **Termux không root:** mặc định chỉ bind `127.0.0.1`; các thiết bị khác không thể truy cập trực tiếp.
+- **Root-mode:** vẫn giữ mặc định cũ `0.0.0.0` trên mọi giao diện để không đổi luồng hiện tại. Web UI không xác thực và tiến trình có thể chạy với quyền root; thiết bị trên LAN/Tailscale có thể gửi lệnh tới gateway nếu mạng cho phép. Đây là rủi ro bảo mật đã biết, không phải chế độ được khuyến nghị.
+- **Truy cập riêng qua Tailscale:** ưu tiên để Web UI bind loopback, rồi dùng [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve) làm reverse proxy nội bộ tailnet:
 
 ```sh
-WEBUI_HOST=100.x.y.z scripts/webui.sh start
+# Chỉ cần nếu đang ở root-mode; no-root đã mặc định loopback.
+WEBUI_HOST=127.0.0.1 scripts/webui.sh restart
+
+# Trên thiết bị có Web UI chạy ở cổng 3000:
+tailscale serve 3000
+tailscale serve status
+
+# Khi muốn ngừng chia sẻ:
+tailscale serve off
 ```
 
-Thay `100.x.y.z` bằng địa chỉ Tailscale thực tế. Đổi host cần restart Web UI. Không dùng `WEBUI_HOST=0.0.0.0` trừ khi chấp nhận UI không xác thực trên tất cả giao diện mạng.
+Mở URL HTTPS mà `tailscale serve status` hiển thị từ thiết bị trong tailnet. Serve chỉ chia sẻ trong tailnet, nhưng vẫn cần giới hạn quyền truy cập bằng ACL/grants và chỉ cho người/thiết bị đáng tin cậy vì chính Web UI không có đăng nhập. **Không dùng Tailscale Funnel** nếu không muốn công khai dịch vụ ra Internet.
 
-Cổng và host có thể đặt cùng lúc:
+## Truy cập qua LAN
+
+Không bind trực tiếp Web UI hiện tại ra LAN: ứng dụng không có xác thực. Nếu cần truy cập LAN, chỉ cân nhắc cấu hình rõ một địa chỉ LAN cụ thể (không dùng wildcard `0.0.0.0`) sau khi đã đặt Web UI sau reverse proxy có xác thực và cấu hình firewall giới hạn nguồn truy cập. Không có proxy xác thực và firewall phù hợp thì hãy giữ loopback.
+
+Có thể đặt host/cổng tường minh, ví dụ giữ loopback và đổi cổng:
 
 ```sh
 WEBUI_HOST=127.0.0.1 WEBUI_PORT=8080 scripts/webui.sh start
 ```
 
-## Watchdog
+`WEBUI_HOST` là opt-in rõ ràng; đổi host cần restart Web UI. Không dùng `WEBUI_HOST=0.0.0.0` trừ khi đã chủ động xử lý xác thực và giới hạn mạng cho mọi giao diện.
 
-`service.d/05-watchdog.sh` tiếp tục revive web UI trong luồng root hiện có. Watchdog no-root chỉ quản lý Hermes gateway, không tự khởi chạy Web UI. Nếu cần chạy no-root, gọi `scripts/webui.sh start` rõ ràng sau khi đã chọn host phù hợp.
+## Watchdog và kiến trúc
 
-## Kiến trúc
+`service.d/05-watchdog.sh` tiếp tục revive Web UI trong luồng root hiện có. Watchdog no-root chỉ quản lý Hermes gateway, không tự khởi chạy Web UI; nếu cần chạy ở no-root, gọi `scripts/webui.sh start`.
 
+```text
+Trình duyệt ──HTTP──> web/server.py (cổng 3000, không auth) ──> hermes run --message ──> gateway
 ```
-Trình duyệt ──HTTP──> web/server.py (port 3000, không auth) ──> hermes run --message ──> gateway
-```
 
-`server.py` chỉ dùng stdlib (http.server, subprocess). Không cần npm, không cần Node. Chạy chung venv với gateway.
+`server.py` chỉ dùng thư viện chuẩn Python; không cần npm hay Node. `HERMES_VENV` được dùng để chọn Hermes CLI cho `/api/send`.

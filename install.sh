@@ -27,6 +27,11 @@ else
   DEFAULT_HM="$USER_HOME/.hermes-home"
 fi
 HM="${HERMES_HOME:-$DEFAULT_HM}"
+PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null || true)
+if [ -z "$PYTHON" ]; then
+  echo "LỖI: không tìm thấy Python (python/python3); cần Python để tạo hoặc cập nhật venv." >&2
+  exit 1
+fi
 
 REPO_DIR="${REPO_DIR:-}"
 if [ -n "$REPO_DIR" ] && [ -d "$REPO_DIR" ] && [ -f "$REPO_DIR/install.sh" ]; then
@@ -60,6 +65,21 @@ else
 fi
 if [ ! -f "$REPO_DIR/install.sh" ] || [ ! -d "$REPO_DIR/service.d" ]; then
   echo "LỖI: repo không đầy đủ: $REPO_DIR"; exit 1
+fi
+
+if [ "$MODE" = "root" ]; then
+  VENV_DEFAULT=/data/local/hermes-venv
+  AGENT_DEFAULT=/data/local/hermes-agent
+else
+  VENV_DEFAULT="$USER_HOME/hermes-venv"
+  AGENT_DEFAULT="$USER_HOME/hermes-agent"
+fi
+VENV="${HERMES_VENV:-$VENV_DEFAULT}"
+AGENT="${HERMES_AGENT_DIR:-$AGENT_DEFAULT}"
+if [ ! -d "$AGENT" ] && ! command -v git >/dev/null 2>&1; then
+  echo "LỖI: cần git để clone hermes-agent vào $AGENT nhưng không tìm thấy git." >&2
+  echo "Cài git rồi chạy lại installer." >&2
+  exit 1
 fi
 
 echo "==> Repo: $REPO_DIR"
@@ -163,29 +183,21 @@ fi
 # ---------------------------------------------------------------------------
 # T7. venv + hermes-agent.
 # ---------------------------------------------------------------------------
-if [ "$MODE" = "root" ]; then
-  VENV_DEFAULT=/data/local/hermes-venv
-  AGENT_DEFAULT=/data/local/hermes-agent
-else
-  VENV_DEFAULT="$USER_HOME/hermes-venv"
-  AGENT_DEFAULT="$USER_HOME/hermes-agent"
-fi
-VENV="${HERMES_VENV:-$VENV_DEFAULT}"
-AGENT="${HERMES_AGENT_DIR:-$AGENT_DEFAULT}"
-
 if [ ! -d "$AGENT" ]; then
   echo "==> hermes-agent chưa có -> clone vào $AGENT"
   if command -v git >/dev/null 2>&1; then
-    git clone --depth 1 https://github.com/NousResearch/hermes-agent.git "$AGENT" || \
-      echo "  CẢNH BÁO: clone hermes-agent thất bại, bỏ qua."
+    git clone --depth 1 https://github.com/NousResearch/hermes-agent.git "$AGENT" || {
+      echo "LỖI: git clone hermes-agent thất bại; installer chưa hoàn tất." >&2
+      exit 1
+    }
   else
-    echo "  CẢNH BÁO: không có git, bỏ qua clone hermes-agent."
+    echo "LỖI: cần git để clone hermes-agent nhưng không tìm thấy git." >&2
+    exit 1
   fi
 fi
 
 LOCK="$HM/backups/venv-requirements.android.lock"
 [ -f "$LOCK" ] || LOCK="$HM/backups/venv-requirements.lock"
-PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null || true)
 
 if [ -d "$AGENT" ] && [ -n "$PYTHON" ]; then
   if [ ! -x "$VENV/bin/python" ]; then
