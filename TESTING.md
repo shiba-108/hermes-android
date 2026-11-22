@@ -1,41 +1,45 @@
-# Kết quả kiểm thử host và trạng thái Android 14
+# Результаты host-проверок и статус Android 14
 
-## Kết luận mới nhất
+## Текущий результат
 
-Code được kiểm tra: `5622132f261aff804b3d798d8bab74dc038a3045` (`feat/no-root`). Trên Linux x86_64, toàn bộ 8 test trong `tests/no_root_harness.py` đạt. Đây là kiểm thử host với stub, thư mục tạm và localhost; không phải kiểm thử Android.
+На Linux x86_64 прогнан `python3 tests/no_root_harness.py`: **10/10 PASS** на рабочем дереве интеграционной ветки, которое включает исправления V2 и upstream `e3adac6`. Это тесты host с временными файлами, заглушками и localhost; они не являются тестом Android.
 
-Regression bảo mật tạo một tên package trong lock có chứa payload benign chỉ chạm một marker trong thư mục tạm nếu bị Python evaluate. Trên commit mới, marker không xuất hiện và test đạt. Negative control chạy đúng test ấy trên code cũ `e46da08a417939efe0ee667e0637f99711fa7aff` thất bại như mong đợi vì marker đã bị tạo, xác nhận regression bắt được lỗi cũ.
+Дополнительно: `sh -n` прошёл для всех shell-скриптов в рабочем дереве, `ast.parse` прошёл для 3 Python-файлов, `git diff --check` прошёл, конфликтных маркеров нет, `service.d/` не менялся относительно общей базы веток.
 
-Các vấn đề P2 được nêu trong lần rà soát trước đã được xử lý trong `5622132`: kiểm tra phiên bản package truyền tên/version qua argv thay vì nhúng dữ liệu lock vào Python source; Web UI gọi Hermes từ `HERMES_VENV` tùy chỉnh; installer dừng với lỗi nếu thiếu Python hoặc thiếu Git khi cần clone. Các test host xác nhận các luồng này bằng fixture/mock, không chạy cài package thật.
+**Android 14/API 34 остаётся BLOCKED; Android/Termux-тесты NOT RUN. PASS на Android не заявляется.** В Sandbox отсутствуют `/dev/kvm`, `adb`, Android Emulator/SDK tools и QEMU; предыдущая попытка запуска через TCG не завершилась. OnePlus 11R не использовался.
 
-**Android 14/API 34 vẫn BLOCKED; kiểm thử trên Android/Termux là NOT RUN. Không có Android PASS nào được xác nhận.** Sandbox không có `/dev/kvm`, `adb`, Android Emulator/SDK tools hoặc QEMU; lần thử boot TCG trước đó không hoàn tất. Không thao tác OnePlus 11R, không dùng secret/API/model trả phí.
+## Результаты harness
 
-Log cập nhật: [`test-logs/review-feat-no-root-2026-11-22.log`](test-logs/review-feat-no-root-2026-11-22.log). Kết quả rà soát và host test trước đó trên commit `e46da08` vẫn được giữ ở phần đầu log; log nền cũ `2f19530` nằm tại [`test-logs/linux-host-2026-11-22.log`](test-logs/linux-host-2026-11-22.log).
-
-## Phạm vi chạy trên host
-
-Lệnh chính: `python3 tests/no_root_harness.py` — **8/8 test đạt**.
-
-| Kiểm tra | Kết quả | Phạm vi |
+| Проверка | Результат | Что именно проверено |
 |---|---|---|
-| Shell/Python syntax | PASS | `sh -n` cho shell files trong harness và compile Python của Web UI; chỉ xác nhận cú pháp trên Linux. |
-| Lock package-name marker payload | PASS | Dữ liệu package không bị evaluate; chỉ tạo marker trong temp nếu bị thực thi. Venv Python được harness cung cấp, metadata giả; không cài package. |
-| Negative control trên `e46da08` | EXPECTED FAIL | Cùng test thấy marker bị tạo trên bản cũ; đây là kiểm tra hiệu lực của regression, không phải lỗi ở commit mới. |
-| Root lock trust boundary | PASS | Giả lập uid 0; lock path không đáng tin bị từ chối fail-closed. Không thay đổi quyền hay file hệ thống. |
-| Installer thiếu Python / Git | PASS | Chạy với PATH và HOME tạm; xác nhận installer dừng trước khi báo hoàn tất/ghi file. Không clone hay tải dependency. |
-| Web UI và venv tùy chỉnh | PASS | Stub Hermes/Python, server bind localhost; kiểm tra endpoint và đúng executable của custom venv. Không kết nối gateway/API thật. |
-| Mặc định host/loopback | PASS | Kiểm tra chọn bind host cho root/non-root bằng mock. |
+| Shell/Python syntax | PASS | Shell-файлы проверены `sh -n`; Python проверен синтаксически. Linux-only проверка синтаксиса. |
+| Стандартный bind host | PASS | С моками проверены значения по умолчанию для root и non-root; сервер не открывался на внешнюю сеть. |
+| Отсутствует Python | PASS | Installer прекращает работу до записи установочных файлов; использован временный PATH. |
+| Нет Git, когда нужен clone | PASS | Installer прекращает работу, если требуется clone, а Git недоступен. Clone и сеть не использовались. |
+| Lock package-name payload | PASS | Искусственный payload в имени пакета не исполняется; pip и venv подменены заглушками. |
+| Root lock trust boundary | PASS | В симуляции UID 0 недоверенный путь lock отвергнут. Права и системные файлы не менялись. |
+| Web UI custom venv | PASS | Локальные заглушки подтвердили использование заданного `HERMES_VENV`; тестовые HTTP-запросы шли только на localhost. |
+| `start-manual.sh` передаёт custom paths | PASS | Временная среда подтвердила передачу путей helper-у watchdog. |
+| `start-manual.sh` под UID 0 | PASS | Helper отказывает при UID 0. |
+| Python syntax в Web UI server | PASS | Проверена синтаксическая корректность Python-файла; gateway/API не запускались. |
 
-Môi trường: Linux x86_64, uid 1000. Các luồng tích hợp chỉ dùng file tạm và localhost; không gọi dịch vụ ngoài, không dùng secret và không tải/cài dependency.
+Общий вывод harness: **10/10 PASS** на Linux. Никакие тесты не подтверждают установку на Android, работу Shizuku/rish, перезагрузку устройства, Telegram-соединение, запросы к модели или uptime.
 
 ## Android 14 / API 34
 
 | Hạng mục | Trạng thái | Ghi chú |
 |---|---|---|
-| Boot AVD Android 14 / API 34 | BLOCKED | Sandbox thiếu KVM, emulator, SDK tools và QEMU; lần boot TCG trước không hoàn tất. |
-| Cài Termux no-root | NOT RUN | Không có Android/Termux để cài. Harness installer chỉ chạy host với stub. |
-| Reboot và xác nhận tự khởi động | NOT RUN | Không có emulator Android đang boot. |
-| Dừng process và xác nhận watchdog revive trên Android | NOT RUN | Không xác nhận hành vi trên Android. |
-| Telegram/gateway kết nối thật | NOT RUN | Không cấu hình secret, không gọi API hay model. |
+| Boot AVD Android 14 / API 34 | BLOCKED | Sandbox не имеет KVM, emulator, SDK tools и QEMU; предыдущая попытка запуска TCG не завершилась. |
+| Установка Termux no-root | NOT RUN | Нет Android/Termux для установки; installer проверялся на host с заглушками. |
+| Reboot и автозапуск | NOT RUN | Android emulator не запускался. |
+| Watchdog revival на Android | NOT RUN | На устройстве не проверялось. |
+| Shizuku, rish и Private DNS | NOT RUN | Только моделирование shell-команд в тестах ветки; это не Android/Shizuku-тест. Android Private DNS использует DoT, не DoH. |
+| Telegram/gateway/model | NOT RUN | Нет реальных credentials и подключения к API/provider. |
+| Видео и live Telegram screenshots | NOT AVAILABLE | Реальная съёмка не выполнялась; SVG в репозитории — mockup. |
 
-Chỉ đánh dấu PASS sau khi chạy trực tiếp trên Android 14/API 34 no-root Termux, ghi phiên bản Android/Termux và lệnh cài, reboot thực tế, chủ động dừng process để quan sát watchdog khởi động lại, rồi lưu log. Không có video nào được tạo.
+Android можно пометить PASS только после реальной проверки на Android 14/API 34: зафиксировать версии Android и Termux, установку, reboot, проверку автозапуска, остановку процесса и наблюдение за watchdog, затем сохранить локальные логи и реальный Telegram-результат.
+
+## Журналы
+
+- [Текущий интеграционный прогон и предыдущие проверки](test-logs/review-feat-no-root-2026-11-22.log)
+- [Базовый Linux host log](test-logs/linux-host-2026-11-22.log)

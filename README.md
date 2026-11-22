@@ -1,5 +1,7 @@
 # hermes-android
 
+> **Beta notice:** the no-root + Shizuku work is not verified on Android 14 or a real device. Host tests use Linux and stubs only; no Android PASS, live Telegram demo, or real video is claimed.
+
 ## “No Root, Like Root” — a hook, not a privilege claim
 
 `hermes-android` provides scripts for setting up and running the [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway on Android. The installer detects privilege level and Magisk; it copies the `service.d/` boot scripts only when both root and Magisk are present, while non-root Termux uses a separate user-home path.
@@ -41,6 +43,12 @@ To start it after reboot, install and open Termux:Boot once, then explicitly reg
 sh "$HOME/.hermes-home/scripts/termux-boot.sh" install
 ```
 
+If you do not use Termux:Boot, start it manually after reboot:
+
+```sh
+sh "$HOME/.hermes-home/scripts/start-manual.sh"
+```
+
 See [`docs/NO-ROOT.md`](docs/NO-ROOT.md) for the full no-root and Shizuku guide, including stop, uninstall, and restore commands. For **root + Magisk**, the `service.d/` path takes effect after reboot.
 
 The installer does not create provider accounts or supply credentials. Store secrets on your device, never in this repository. Provider prices, free tiers, quotas, and model availability depend on the provider; this project does not guarantee free or unlimited usage.
@@ -67,6 +75,8 @@ The optional `scripts/shizuku-setup.sh` helper uses Shizuku's `rish` shell bridg
 - [Web UI guide](web/README.md)
 - [Contributing](CONTRIBUTING.md)
 - [License](LICENSE)
+
+The MIT license covers only original Team 1 additions. Hermes Agent and other upstream or third-party material retain their own licenses and copyrights.
 
 `docs/demo-telegram.svg` is an illustrative mockup, not a live capture or evidence of telemetry. No real video footage or MP4 is included; the TikTok material is a storyboard and script only in [`docs/TIKTOK.md`](docs/TIKTOK.md).
 
@@ -129,5 +139,7 @@ Helper Shizuku tùy chọn `scripts/shizuku-setup.sh` chỉ dùng cầu nối sh
 - [Hướng dẫn web UI](web/README.md)
 - [Đóng góp](CONTRIBUTING.md)
 - [Giấy phép](LICENSE)
+
+Giấy phép MIT chỉ áp dụng cho phần bổ sung gốc của Team 1. Hermes Agent upstream và nội dung bên thứ ba giữ nguyên giấy phép và bản quyền riêng.
 
 `docs/demo-telegram.svg` là mockup minh họa, không phải ảnh chụp trực tiếp hay bằng chứng telemetry. Repo chưa có footage video thật hoặc MP4; nội dung TikTok trong [`docs/TIKTOK.md`](docs/TIKTOK.md) hiện chỉ là storyboard và kịch bản.

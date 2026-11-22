@@ -22,6 +22,7 @@ ROOT = Path(__file__).resolve().parents[1]
 SERVER = ROOT / "web" / "server.py"
 WEBUI = ROOT / "scripts" / "webui.sh"
 INSTALLER = ROOT / "install.sh"
+START_MANUAL = ROOT / "scripts" / "start-manual.sh"
 
 
 def free_port():
@@ -344,6 +345,61 @@ class NoRootHarness(unittest.TestCase):
             self.assertIn("git", output)
             self.assertNotIn("Xong.", output)
             self.assertFalse(hm.exists(), "installer wrote files before prerequisite failure")
+
+    def test_start_manual_delegates_to_watchdog_with_custom_paths(self):
+        with tempfile.TemporaryDirectory(prefix="hermes-manual-start-") as temp_name:
+            temp = Path(temp_name)
+            home = temp / "home"
+            hm = temp / "custom-hermes-home"
+            venv = temp / "custom-venv"
+            marker = temp / "watchdog-called"
+            watchdog = hm / "scripts" / "no-root-watchdog.sh"
+            write_executable(
+                watchdog,
+                "#!/bin/sh\n"
+                'printf "%s|%s|%s\\n" "$HERMES_HOME" "$HERMES_VENV" "$1" '
+                '> "$WATCHDOG_MARKER"\n',
+            )
+            fake_bin = temp / "fake-bin"
+            write_executable(fake_bin / "id", "#!/bin/sh\necho 1000\n")
+            env = os.environ.copy()
+            env.update(
+                {
+                    "HOME": str(home),
+                    "HERMES_HOME": str(hm),
+                    "HERMES_VENV": str(venv),
+                    "WATCHDOG_MARKER": str(marker),
+                    "PATH": str(fake_bin) + os.pathsep + env.get("PATH", ""),
+                }
+            )
+            result = subprocess.run(
+                ["/bin/sh", str(START_MANUAL), "start"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                timeout=8,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertEqual(marker.read_text(encoding="utf-8").strip(), f"{hm}|{venv}|start")
+
+    def test_start_manual_refuses_uid_zero(self):
+        with tempfile.TemporaryDirectory(prefix="hermes-manual-root-") as temp_name:
+            temp = Path(temp_name)
+            fake_bin = temp / "fake-bin"
+            write_executable(fake_bin / "id", "#!/bin/sh\necho 0\n")
+            env = os.environ.copy()
+            env["PATH"] = str(fake_bin) + os.pathsep + env.get("PATH", "")
+            result = subprocess.run(
+                ["/bin/sh", str(START_MANUAL), "start"],
+                cwd=ROOT,
+                env=env,
+                text=True,
+                capture_output=True,
+                timeout=8,
+            )
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("UID 0", result.stdout + result.stderr)
 
 
 if __name__ == "__main__":

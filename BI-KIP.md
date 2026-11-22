@@ -14,9 +14,10 @@ Thu thập từ skill `sys-status`, `sys-logs`, `sys-restart`, `sys-maintenance`
 8. [Model free + lỗi menu /model cache 63 con](#8-model-free--lỗi-menu-model-cache-63-con)
 9. [Set model bằng config set](#9-set-model-bằng-config-set)
 10. [SSH key + lỗi Permission denied publickey](#10-ssh-key--lỗi-permission-denied-publickey)
-11. [Web UI (port 3000)](#11-web-ui-port-3000)
-12. [Backup](#12-backup)
-13. [Pitfalls](#pitfalls)
+11. [Chạy không root vs có root](#11-chạy-không-root-vs-có-root)
+12. [Web UI (port 3000)](#12-web-ui-port-3000)
+13. [Backup](#13-backup)
+14. [Pitfalls](#pitfalls)
 
 ---
 
@@ -56,10 +57,12 @@ Xong báo PID mới (`pgrep -f "gateway run|gateway restart"`) + dòng `Connecte
 
 ## 4. Watchdog
 
-`05-watchdog.sh` mỗi 300s nuôi lại doh/gateway/tailscale/webui. Điều kiện gateway
-phải là **cả** hai: `pgrep -f "gateway run|gateway restart"` **và**
-`tail -n 100 logs/gateway.log | grep -q "Connected to Telegram"`.
-Chỉ `pgrep` là không đủ: process sống nhưng crash-loop vẫn tính là "sống".
+Có hai watchdog khác nhau, không được coi chúng là cùng một tính năng:
+
+- **Root + Magisk:** `service.d/05-watchdog.sh` kiểm tra mỗi 300 giây. Script hiện có thể khởi động lại gateway khi process không thấy hoặc log gần nhất không có `Connected to Telegram`; đồng thời thử giữ các tiến trình DoH, Web UI và Tailscale. Đây là hành vi của script root hiện có, chưa được kiểm thử Android trong beta này.
+- **Termux không root:** `scripts/no-root-watchdog.sh` kiểm tra mỗi 300 giây và chỉ quản lý gateway do chính nó khởi chạy. Nó không quản lý Telegram health, DoH, Web UI, Tailscale, package Android, Doze hay Private DNS. Process còn chạy không chứng minh bot đã kết nối.
+
+Termux:Boot là tùy chọn và installer không tự đăng ký hook. `start-manual.sh` chỉ dùng trong Termux không root; nó từ chối chạy dưới UID 0. Root không Magisk không có boot hook được dự án hỗ trợ.
 
 Sửa `service.d/*.sh` → `cp -a <file> <file>.bak` → `sh -n` → **restart watchdog** để nạp code
 (shell đọc script theo lô, đổi nội dung mà không restart thì chạy code cũ hoặc corrupt).
@@ -77,13 +80,9 @@ Sửa `service.d/*.sh` → `cp -a <file> <file>.bak` → `sh -n` → **restart w
 
 ## 6. Dọn app
 
-- `pm list packages -3` (đang cài), `-3 -e` (đang bật), `-d` (đã disable).
-- Google rác disable an toàn: Files, work.clouddpc, onetimeinitializer, partnersetup,
-  apps.restore, configupdater, hotwordenrollment, adm, contactkeys, verifier,
-  ambient.streaming, adservices, federatedcompute, ondevicepersonalization, rkpdapp,
-  healthdata, healthconnect, switchaccess, talkback.
-- Bloat OPLUS/OnePlus (heytap.market, themestore, aiunit...) → hỏi thêm.
-- `pm disable-user --user 0 <pkg>`; bật lại bằng `pm enable`. Không bao giờ uninstall.
+Không có danh sách package hệ thống nào được xác nhận là “an toàn để disable” trên mọi máy. Tên package và tác động khác nhau theo Android/ROM; đừng chạy lệnh bulk hoặc dùng danh sách cũ trên mạng.
+
+Shizuku helper chỉ cho phép xem hoặc disable **một package bên thứ ba được chỉ rõ**; nó từ chối package hệ thống và chỉ hoàn tác mục do chính helper ghi nhận. Xem `scripts/shizuku-setup.sh --help` và `docs/NO-ROOT.md` trước khi thay đổi. Nếu không chắc package đó làm gì, đừng disable.
 
 ## 7. Đánh giá sinh tồn
 
@@ -96,33 +95,17 @@ Chỉ đề xuất, không tự sửa.
 
 ## 8. Model free + lỗi menu /model cache 63 con
 
-**Chỉ dùng model free (KHÔNG bao giờ dùng model trả phí):**
+Danh sách model, nhãn “free”, hạn mức và giá có thể đổi theo provider; không coi model cụ thể nào trong ghi chú cũ là miễn phí hiện tại. Kiểm tra giá và hạn mức trực tiếp với provider trước khi chọn.
 
-| Vai trò | Model |
-|---|---|
-| Mặc định | `baidu/ernie-5.5-flash-preview:free` |
-| Dự phòng 1 | `inclusionai/ling-3.2-flash:free` |
-| Dự phòng 2 | `particle-ai/particle-1:free` |
-
-**Lỗi menu `/model` hiện 63 con (rác):** do cache model cũ từ nhà cung cấp khác
-được nạp vào menu. Cách sửa:
+Nếu menu `/model` có lựa chọn cũ, kiểm tra cấu hình hiện tại trước:
 
 ```sh
-# 1) Xóa cache model (kiểm tra bằng hermes config get trước)
-hermes config get model.default          # xem đang set gì
-
-# 2) Xóa cache menu model (file cache)
-rm -f /data/local/hermes-home/provider_models_cache.json
-rm -f /data/local/hermes-home/models_dev_cache.json
-rm -f /data/local/hermes-home/models_dev_cache.etag
-rm -f /data/local/hermes-home/context_length_cache.yaml
-
-# 3) Đặt lại model free (mục 9)
+hermes config get model.default
+hermes config get model.provider
+hermes config get model.fallbacks
 ```
 
-Sau khi xóa cache, mở menu `/model` lại → chỉ còn model free của provider hiện tại.
-Nếu menu vẫn còn 63 con, kiểm tra `hermes config get model.fallbacks` xem có
-model cũ nào sót không.
+Không xóa file cache theo đường dẫn cố định nếu chưa xác nhận đường dẫn và hướng dẫn của đúng phiên bản Hermes đang cài. Nếu cần đổi lựa chọn, dùng lệnh cấu hình ở mục tiếp theo và kiểm tra lại menu.
 
 ## 9. Set model bằng config set
 
@@ -133,17 +116,16 @@ model cũ nào sót không.
 hermes config get model.default
 hermes config get model.provider
 
-# Đặt model mặc định (free)
-hermes config set model.default baidu/ernie-5.5-flash-preview:free
+# Đặt model mặc định theo đúng provider/model đã kiểm tra giá
+hermes config set model.default <provider/model>
 
 # Đặt provider
 hermes config set model.provider openrouter
 
-# Đặt fallback (list) — nếu CLI hỗ trợ, nếu không thì sửa config.yaml cẩn thận
-# hermes config set model.fallbacks '["inclusionai/ling-3.2-flash:free","particle-ai/particle-1:free"]'
+# Cấu hình fallback theo cú pháp được phiên bản Hermes hiện tại hỗ trợ
 ```
 
-`config.yaml` hiện tại đang đúng chuẩn (mục `model:`), KHÔNG cần sửa nếu đã có.
+Đừng giả định fallback nào cũng miễn phí; kiểm tra từng lựa chọn với provider. Không tự sửa `config.yaml` nếu chưa biết schema của phiên bản đang chạy.
 
 > ⚠️ Sau khi `config set` xong phải restart gateway để nạp model mới. Hỏi Yes/No trước.
 
@@ -179,7 +161,27 @@ Nếu vẫn lỗi:
 - Đảm bảo repo remote đúng: `git remote -v` → `git@github.com:shiba-108/hermes-android.git`.
 - Nếu dùng `https://` remote, đổi sang SSH: `git remote set-url origin git@github.com:shiba-108/hermes-android.git`.
 
-## 11. Web UI (port 3000)
+## 11. Chạy không root vs có root
+
+Installer tự phát hiện UID và Magisk rồi in chế độ khi chạy. Các luồng dưới đây khác nhau:
+
+| Chế độ | Điều kiện | Làm được | Sau reboot |
+|---|---|---|---|
+| root + Magisk | UID 0 và Magisk | chép các script hiện có vào `service.d/`; gồm các thao tác root như ADB-over-TCP và iptables/DNS | script service.d chạy khi boot theo Magisk |
+| root, không Magisk | UID 0, không Magisk | installer vẫn cài tệp dự án nhưng bỏ qua `service.d/`; repo không cấu hình boot cho chế độ này | chưa có tự khởi động do repo cấu hình |
+| Termux không root | UID khác 0 | cài trong home Termux; watchdog no-root chỉ quản lý gateway | chạy tay hoặc tự chọn Termux:Boot |
+
+**Termux không root:** sau reboot, chỉ khi không dùng Termux:Boot thì khởi chạy thủ công:
+
+```sh
+sh "$HOME/.hermes-home/scripts/start-manual.sh"
+```
+
+`start-manual.sh` chuyển tiếp sang no-root watchdog và từ chối UID 0. Watchdog không khởi chạy Web UI hay Tailscale, và không chứng minh kết nối Telegram.
+
+Termux:Boot cần được cài/mở riêng, sau đó đăng ký hook chủ động bằng `sh $HERMES_HOME/scripts/termux-boot.sh install`. Gỡ bằng `uninstall`; gỡ hook không tự dừng gateway/watchdog. Hướng dẫn chi tiết nằm trong `docs/NO-ROOT.md`.
+
+## 12. Web UI (port 3000)
 
 ```sh
 scripts/webui.sh start     # nohup, PID ở ~/webui.pid
@@ -187,11 +189,11 @@ scripts/webui.sh status
 scripts/webui.sh stop / restart
 ```
 
-- Truy cập qua Tailscale: `http://<tailscale-ip>:3000` hoặc LAN `http://<ip>:3000`.
-- Watchdog `05-watchdog.sh` tự revive webui nếu chết.
+- Web UI **không có xác thực**. Root mặc định bind `0.0.0.0` (mọi giao diện); Termux không root mặc định bind `127.0.0.1` (chỉ local). Muốn bind địa chỉ khác phải đặt `WEBUI_HOST` rõ ràng.
+- Chỉ mở từ xa nếu bạn hiểu rủi ro và giới hạn truy cập vào mạng tin cậy; đừng phơi UI ra Internet công cộng. Watchdog root Magisk hiện có thể thử khởi chạy lại UI; watchdog no-root thì không quản lý UI.
 - Chi tiết: `web/README.md`.
 
-## 12. Backup
+## 13. Backup
 
 ```sh
 scripts/backup.sh          # tạo archive mã hoá age vào backups/
@@ -202,7 +204,7 @@ scripts/backup.sh --drive  # đẩy lên Google Drive (rclone 'gdrive')
 - Chỉ đẩy file `.enc` (đã mã hoá). Private key KHÔNG BAO GIỜ lên git.
 - Chi tiết: `docs/BACKUP.md`.
 
-## Pitfalls
+## 14. Pitfalls
 
 - `pgrep -af <pattern>` khớp cả shell snapshot của lệnh terminal (cmdline chứa pattern) → PID rác.
   Dùng `pgrep -f` hoặc `ps -eo pid,etime,args | grep -E ... | grep -v 'bash -c'`.

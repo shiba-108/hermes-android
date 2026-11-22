@@ -28,7 +28,7 @@ For a committed patch, `git diff-tree --check <base> HEAD` can check the commit 
 
 ## Scope and licensing
 
-Small, reviewable contributions are easiest to validate. Do not add generated media or claim that an illustration is a real capture. Contributions are subject to the repository's [MIT license](LICENSE).
+Small, reviewable contributions are easiest to validate. Do not add generated media or claim that an illustration is a real capture. The [MIT license](LICENSE) applies only to original Team 1 contributions; Hermes Agent upstream and third-party materials keep their own licenses and copyrights.
 
 ---
 
@@ -62,4 +62,4 @@ Với patch đã commit, có thể dùng `git diff-tree --check <base> HEAD` đ�
 
 ## Phạm vi và giấy phép
 
-Thay đổi nhỏ, dễ review sẽ dễ xác minh hơn. Không thêm media tạo sinh hoặc mô tả hình minh họa như ghi hình thật. Đóng góp tuân theo [giấy phép MIT](LICENSE).
+Thay đổi nhỏ, dễ review sẽ dễ xác minh hơn. Không thêm media tạo sinh hoặc mô tả hình minh họa như ghi hình thật. [Giấy phép MIT](LICENSE) chỉ áp dụng cho phần bổ sung gốc do Team 1 viết; mã Hermes Agent upstream và tài liệu bên thứ ba giữ nguyên giấy phép/bản quyền riêng.

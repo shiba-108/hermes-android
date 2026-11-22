@@ -19,6 +19,13 @@ if [ -d /data/adb/magisk ] || [ -d /data/adb/modules ] || command -v magisk >/de
   IS_MAGISK=1
 fi
 if [ "$IS_ROOT" = "1" ]; then MODE=root; else MODE=no-root; fi
+if [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" ]; then
+  MODE_DESC="root + Magisk"
+elif [ "$IS_ROOT" = "1" ]; then
+  MODE_DESC="root without Magisk"
+else
+  MODE_DESC="Termux no-root"
+fi
 
 USER_HOME=${HOME:-/data/local/tmp}
 if [ "$MODE" = "root" ]; then
@@ -83,7 +90,7 @@ if [ ! -d "$AGENT" ] && ! command -v git >/dev/null 2>&1; then
 fi
 
 echo "==> Repo: $REPO_DIR"
-echo "==> Chế độ: $MODE | root=$IS_ROOT | magisk=$IS_MAGISK"
+echo "==> Chế độ: $MODE_DESC | root=$IS_ROOT | magisk=$IS_MAGISK"
 echo "==> HERMES_HOME=$HM"
 
 # ---------------------------------------------------------------------------
@@ -115,7 +122,10 @@ if [ -d "$REPO_DIR/service.d" ] && [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" 
     echo "  install $SD/$b"
   done
 else
-  echo "==> Bỏ qua service.d (chỉ dùng khi có root + Magisk)."
+  echo "==> Bỏ qua service.d ($MODE_DESC; chỉ dùng khi có root + Magisk)."
+  if [ "$MODE" = "no-root" ]; then
+    echo "    Sau reboot chạy tay: sh $HM/scripts/start-manual.sh"
+  fi
 fi
 
 # ---------------------------------------------------------------------------
@@ -228,7 +238,7 @@ fi
 # ---------------------------------------------------------------------------
 echo
 echo "============================================================"
-echo " Xong."
+echo " Xong. Chế độ: $MODE_DESC"
 echo "   HERMES_HOME : $HM"
 echo "   venv        : $VENV"
 echo "   agent dir   : $AGENT"
@@ -242,11 +252,14 @@ echo "        OPENROUTER_API_KEY=..."
 echo "        TELEGRAM_BOT_TOKEN=..."
 echo "   2) Đặt model free bằng hermes config set như hướng dẫn README."
 if [ "$MODE" = "no-root" ]; then
-  echo "   3) Khởi chạy thủ công: sh $HM/scripts/no-root-watchdog.sh start"
+  echo "   3) Khởi chạy: sh $HM/scripts/start-manual.sh (no-root watchdog)"
   echo "      Tùy chọn tự chạy sau reboot: cài/mở Termux:Boot, rồi chạy:"
   echo "      sh $HM/scripts/termux-boot.sh install"
   echo "   4) Shizuku và Private DNS là tùy chọn; installer không đổi quyền/cài đặt hệ thống."
-else
+elif [ "$IS_MAGISK" = "1" ]; then
   echo "   3) Reboot máy (nạp service.d nếu có Magisk), rồi mở Telegram nhắn cho bot."
+else
+  echo "   3) Root không có Magisk nên service.d không được cài; repo không cấu hình boot cho chế độ này."
+  echo "      start-manual.sh chỉ dành cho Termux không root; hãy tự kiểm tra mọi cách chạy bằng root."
 fi
 echo "============================================================"

@@ -1,59 +1,39 @@
-# 📱 Thiết bị đã test & yêu cầu
+# Android device status and test notes
 
-Danh sách máy đã/đang chạy hermes-android. Nếu cài thành công trên máy khác,
-mở PR thêm một dòng (RAM, Android, phương thức cài đặt) để giúp cộng đồng.
+## V2 beta verification status
 
-## ✅ Đã test chạy thật
+No Android device or Android emulator was verified for this V2 beta. Android 14/API 34 testing is BLOCKED / NOT RUN; see [`../TESTING.md`](../TESTING.md) and the saved host logs. The Linux host harness is not evidence of Android compatibility, Telegram connectivity, reboot recovery, or 24/7 uptime.
 
-| Máy | RAM | Android | Root | Ghi chú |
-|---|---|---|---|---|
-| **OnePlus 11R** | 16 GB | 16 (OxygenOS) | Magisk | Máy chính. Chạy 24/7, cắm sạc, watchdog ổn định. LD_PRELOAD libpython3.14. |
+No physical phone, including Shiba's OnePlus 11R, was used for this release work.
 
-## 🧪 Đang thử nghiệm / cộng đồng báo chạy
+## Intended environment
 
-| Máy | RAM | Android | Root | Ghi chú |
-|---|---|---|---|---|
-| **Google Pixel (4a/5/6/7)** | 6–8 GB | 12–14 | Magisk (patch boot.img) | Ổn định, ít bloat. Pixel 4a 6GB là bare-minimum dễ chịu. |
-| **Samsung (S10/S20/A series)** | 6–8 GB | 12–14 | Magisk / KernelSU | Tắt bloat Samsung (heytap, Bixby…) chỉ sau khi đánh giá riêng. |
-| **Xiaomi / Redmi / POCO** | 6–8 GB | 12–14 | Magisk / KernelSU | Hạn chế nền phụ thuộc phiên bản MIUI/HyperOS. |
+- Android with Termux; behavior can vary by Android release and device manufacturer.
+- Root is not required for the Termux no-root path.
+- Magisk `service.d/` is a separate root-only path and has not been revalidated for this beta.
+- Shizuku is optional and only performs the explicitly requested operations documented in [`NO-ROOT.md`](NO-ROOT.md). Android Private DNS uses DoT, not DoH.
 
-## 📋 Yêu cầu tối thiểu
+These are project targets and code paths, not claims that a particular device or Android version has passed testing. Do not rely on the gateway for continuous availability until the exact device, ROM, Termux version, reboot behavior, and recovery behavior have been tested.
 
-| Thành phần | Tối thiểu | Khuyến nghị |
-|---|---|---|
-| Android | 12 | 13+ |
-| RAM | 6 GB | 8–12 GB |
-| Storage trống | 4 GB | 8 GB+ |
-| Root | Không bắt buộc | Magisk nếu cần `service.d` |
-| Nguồn | Sạc ổn định | Cắm sạc; hành vi màn hình/Doze tùy cách cài |
-| Mạng | Kết nối ổn định | Wi-Fi |
+## What to include in a device report
 
-## Cài đặt root và no-root
+For a reproducible community report, include:
 
-- **Root + Magisk:** installer tiếp tục chép các script hiện có vào `service.d/`; reboot để nạp chúng. Một số script root thay đổi cài đặt hệ thống. Xem kỹ các file `service.d/` trước khi dùng.
-- **Không root:** cài bằng Termux. Installer đặt dữ liệu trong thư mục người dùng và không tự bật boot hook, sửa package, Doze hoặc DNS. Watchdog no-root chỉ quản lý Hermes gateway. Termux:Boot và các thao tác Shizuku là tùy chọn, cần người dùng gọi riêng và có lệnh hoàn tác.
-- Chi tiết, lệnh start/stop, quyền Shizuku và giới hạn DoH: [`NO-ROOT.md`](NO-ROOT.md).
+- Device model and Android/ROM version.
+- Termux and Termux:Boot versions and installation source.
+- Root/Magisk/Shizuku configuration, if used.
+- The exact install and start commands, with secrets removed.
+- Whether the gateway was verified, whether a real Telegram exchange succeeded, and what happened after reboot or process termination.
+- Logs with tokens, personal data, hostnames, and private paths removed.
 
-## 🔧 Root theo dòng máy (nếu người dùng chủ động chọn root)
+Mark mock, host-only, and unverified reports clearly. Do not describe a device as tested or stable based only on another device, a mocked test, or a running process.
 
-- **Pixel:** tải factory image → patch `boot.img` bằng Magisk app → flash qua fastboot.
-- **OnePlus / Nothing:** unlock bootloader → flash `boot.img` đã patch.
-- **Samsung:** dùng Odin + Magisk patch `AP_*.tar.md5` (tắt auto-reboot trong Odin).
-- **Xiaomi:** unlock bootloader (chờ 7 ngày) → fastboot flash boot đã patch.
+## Root and device safety
 
-Root không bắt buộc để thử luồng Termux. Thực hiện root có thể xóa dữ liệu hoặc ảnh hưởng bảo hành; tự tìm hiểu rủi ro theo đúng thiết bị trước khi quyết định.
+Rooting is optional and device-specific. Bootloader unlocking or flashing can erase data or make a device unusable; use the manufacturer's and Magisk's current instructions for the exact model. Do not use Shiba's OnePlus 11R for development or testing.
 
-## ⚡ Mẹo theo RAM
+The existing Magisk scripts include system-level network and power-management changes. Review `service.d/` and [`../SECURITY.md`](../SECURITY.md) before opting into the root path. The Web UI has no authentication; root mode currently binds to all interfaces by default.
 
-- **6 GB:** đóng các ứng dụng không dùng; cân nhắc giới hạn số dịch vụ chạy đồng thời.
-- **8 GB+:** có thể thử bật thêm web UI (`web/`) song song gateway.
-- **12 GB+:** có thêm dư địa cho nhiều dịch vụ, nhưng mức ổn định vẫn tùy nhiệt độ, pin và chính sách nền.
+## Contributing a test report
 
-## 🐛 Máy hay dừng ứng dụng nền?
-
-1. Kiểm tra trạng thái bằng `sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" status`.
-2. Android/OEM có thể giới hạn Termux ở nền; nếu cần, cân nhắc tự cài Termux:Boot và bỏ tối ưu pin bằng giao diện Android.
-3. Shizuku có thể thêm package chính xác vào deviceidle whitelist theo lệnh riêng; xem [`NO-ROOT.md`](NO-ROOT.md). Không chạy lệnh package hàng loạt.
-4. Xem `$HOME/.hermes-home/logs/gateway.log` và `no-root-watchdog.log`.
-
-Các bước no-root không bảo đảm Android sẽ giữ ứng dụng chạy liên tục; kiểm thử trên thiết bị cụ thể trước khi dựa vào nó cho dịch vụ quan trọng.
+Open a pull request with reproducible steps and non-sensitive logs. Keep host-test results separate from Android/device results, and say plainly when a step was blocked or not run. See [`../CONTRIBUTING.md`](../CONTRIBUTING.md).
