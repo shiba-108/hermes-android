@@ -16,7 +16,7 @@
 
 - **Root + Magisk:** keeps the repository's `service.d/` boot-script path. The installer copies those scripts only when it detects both root and Magisk.
 - **Non-root Termux:** installs project files under `$HOME/.hermes-home`, the Python environment under `$HOME/hermes-venv`, and the upstream Hermes Agent checkout under `$HOME/hermes-agent`. Set `HERMES_HOME`, `HERMES_VENV`, or `HERMES_AGENT_DIR` before installing to override those defaults.
-- The installer attempts to prepare Hermes Agent and its dependencies. Missing tools, network failures, or unsupported environments can cause steps to be skipped with warnings; review the output and local logs.
+- The installer exits with an error if Python or Git is missing or a required clone fails. Some venv/pip setup steps can still warn or be skipped; review the output and local logs before proceeding.
 
 The no-root watchdog is opt-in and manages only the Hermes gateway process it starts. It does not manage Tailscale, the web UI, DoH, Android package state, Doze, or Private DNS. Termux:Boot is also opt-in: the installer does not register a boot hook automatically.
 
@@ -77,7 +77,7 @@ The optional `scripts/shizuku-setup.sh` helper uses Shizuku's `rish` shell bridg
 
 - **Root + Magisk:** giữ luồng script khởi động `service.d/` hiện có. Installer chỉ chép các script này khi phát hiện đồng thời root và Magisk.
 - **Termux không root:** cài tệp dự án dưới `$HOME/.hermes-home`, môi trường Python dưới `$HOME/hermes-venv` và mã Hermes Agent upstream dưới `$HOME/hermes-agent`. Có thể đặt `HERMES_HOME`, `HERMES_VENV` hoặc `HERMES_AGENT_DIR` trước khi cài để đổi đường dẫn mặc định.
-- Installer thử chuẩn bị Hermes Agent và các gói phụ thuộc. Thiếu công cụ, lỗi mạng hoặc môi trường không tương thích có thể khiến một số bước bị bỏ qua kèm cảnh báo; hãy đọc kết quả và log trên máy.
+- Installer thoát với lỗi nếu thiếu Python/Git hoặc clone bắt buộc thất bại. Một số bước chuẩn bị venv/pip vẫn có thể báo cảnh báo hoặc bị bỏ qua; hãy đọc kết quả và log trên máy trước khi tiếp tục.
 
 Watchdog no-root là tùy chọn và chỉ quản lý tiến trình Hermes gateway do chính nó khởi chạy. Nó không quản lý Tailscale, web UI, DoH, trạng thái package Android, Doze hay Private DNS. Termux:Boot cũng là tùy chọn: installer không tự đăng ký hook khởi động.
 
