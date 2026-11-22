@@ -57,6 +57,7 @@ The optional `scripts/shizuku-setup.sh` helper uses Shizuku's `rish` shell bridg
 - **Root-only helpers:** the Magisk `service.d/` scripts are not made available to ordinary Termux by changing `HERMES_HOME` or starting Shizuku.
 - **Root-script side effects:** review `service.d/` before using it. `02-adbd.sh` sets ADB-over-TCP on port 5555 and restarts `adbd`; avoid untrusted networks. `04-doh.sh` starts a local proxy and adds a root `iptables` NAT rule. These are separate from the no-root Shizuku helper.
 - **Root preflight lock checks:** before reading/installing packages from a lock as root, `scripts/preflight_venv.sh` requires the lock and every parent directory to be root-owned and not writable by group/other. It refuses to continue if that check fails; keep root-mode locks in a trusted location.
+- **Root trust boundary:** Magisk scripts load commands, libraries, and scripts from Termux/Hermes paths through `PATH`, `LD_LIBRARY_PATH`, and `LD_PRELOAD`. Treat those files as root-trusted and protect them from less-privileged modification. The installer clones the current repository branch without pinning a commit or checking a signature; review the source before running it as root.
 - **Secrets and backups:** never commit credentials, session data, private configuration, or unredacted logs. If encryption tools or a recipient are not configured, `scripts/backup.sh` can leave a plaintext archive on-device; do not upload it. Read [`docs/BACKUP.md`](docs/BACKUP.md) first.
 
 ### Project notes
@@ -118,6 +119,7 @@ Helper Shizuku tùy chọn `scripts/shizuku-setup.sh` chỉ dùng cầu nối sh
 - **Helper chỉ dành cho root:** đổi `HERMES_HOME` hay khởi động Shizuku không làm các script Magisk trong `service.d/` chạy được trong Termux thông thường.
 - **Tác động của script root:** xem kỹ `service.d/` trước khi dùng. `02-adbd.sh` đặt ADB-over-TCP ở cổng 5555 và khởi động lại `adbd`; tránh dùng trên mạng không tin cậy. `04-doh.sh` chạy proxy cục bộ và thêm quy tắc NAT `iptables` cần root. Đây là các tính năng riêng của luồng root, không phải helper Shizuku no-root.
 - **Kiểm tra lock khi chạy preflight dưới root:** trước khi đọc/cài gói từ lock, `scripts/preflight_venv.sh` yêu cầu file lock và mọi thư mục cha thuộc root, không cho group/other ghi. Nếu không đạt, script từ chối chạy; hãy giữ lock của chế độ root ở vị trí tin cậy.
+- **Ranh giới tin cậy khi chạy root:** script Magisk nạp lệnh, thư viện và script từ đường dẫn Termux/Hermes qua `PATH`, `LD_LIBRARY_PATH` và `LD_PRELOAD`. Hãy coi các tệp đó là mã chạy với quyền root và bảo vệ để tài khoản ít quyền không sửa được. Installer clone nhánh hiện tại của repo mà không ghim commit hay kiểm tra chữ ký; hãy đọc mã nguồn trước khi chạy dưới root.
 - **Secret và sao lưu:** không commit credential, dữ liệu phiên, cấu hình riêng tư hoặc log chưa che. Nếu thiếu công cụ/recipient mã hóa, `scripts/backup.sh` có thể để lại archive plaintext trên máy; không tải archive đó lên. Đọc [`docs/BACKUP.md`](docs/BACKUP.md) trước.
 
 ### Ghi chú dự án
