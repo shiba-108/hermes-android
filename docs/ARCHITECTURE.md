@@ -116,6 +116,7 @@ Các mục dưới đây là hướng thiết kế, không phải hành vi V2 hi
 - **Shizuku không phải root.** Nhánh no-root chỉ dùng quyền shell mà người dùng cấp qua Shizuku; cần khởi động/cấp quyền theo cơ chế Shizuku. Các thao tác deviceidle và Private DNS có thể khác nhau theo Android/OEM; code có nhánh lỗi nhưng chưa được xác minh trên runtime.
 - **Web UI cần được giới hạn mạng.** Server không có xác thực/TLS trong code đang xem. Wrapper no-root mặc định loopback, nhưng có thể đổi bằng `WEBUI_HOST`; wrapper root và `web/server.py` mặc định bind `0.0.0.0`. Không mở cổng 3000 ra Internet nếu chưa đặt lớp bảo vệ phù hợp.
 - **Magisk scripts có tác động đặc quyền.** ADB TCP, thay đổi deviceidle/stay-awake và iptables là hành vi root hiện có. Không dùng chúng như fallback ngầm cho Termux no-root hoặc Shizuku.
+- **Rủi ro preflight với lock không tin cậy:** rà soát tĩnh độc lập tái hiện được việc entry giả trong lock làm `scripts/preflight_venv.sh` chèn dữ liệu vào mã Python `-c` ở dòng 49. Nếu bên ít quyền có thể sửa lock mà tiến trình root đọc, dữ liệu đó có thể chạy mã trong quyền của caller; quyền sở hữu/ghi file trên thiết bị chưa được xác minh. Không chạy root preflight với lock không tin cậy hoặc có thể bị tài khoản khác sửa cho tới khi cách nội suy được xử lý an toàn.
 
 ## Nguồn
 
