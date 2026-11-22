@@ -1,0 +1,54 @@
+Hermes Android v2 independent review and host-test log
+Date: 2026-11-22T09:58:00+07:00
+Code under test: e46da08a417939efe0ee667e0637f99711fa7aff (feat/no-root)
+Report branch before this update: test/emulator, based on 2f19530
+Host: Linux x86_64
+
+[ANDROID AVAILABILITY]
+/dev/kvm: absent
+adb: not found
+emulator: not found
+sdkmanager: not found
+avdmanager: not found
+qemu-system-x86_64: not found
+qemu-system-aarch64: not found
+The earlier TCG boot attempt did not complete. No Android emulator/device test was run in this review.
+
+[HARNESS 1: static syntax]
+PASS: sh -n on 12 shell files from the exact target worktree (install.sh, scripts/*.sh, service.d/*.sh).
+PASS: Python ast.parse on 2 Python files.
+Scope: Linux syntax only; no Termux/Android compatibility claim.
+
+[HARNESS 2: installer local copy/idempotency]
+PASS: ran target install.sh twice with REPO_DIR set to local target checkout and temporary HOME/HERMES_HOME/HERMES_VENV/HERMES_AGENT_DIR.
+Used fake non-root uid, pre-existing agent directory, and a stub venv/bin/python. Verified no-root branch, file/lock/web copies, second-run .bak file, and --no-deps editable install invocation.
+No production URL, git clone, package download, or real pip command was used.
+
+[HARNESS 3: Termux:Boot helper]
+PASS: with temporary HOME, unmanaged hook collision was refused and left unchanged; managed hook/config installed; repeated install was idempotent; config mode was 0600; uninstall removed only harness-created managed files.
+The generated hook was inspected but not run as an Android boot hook.
+
+[HARNESS 4: no-root watchdog]
+PASS: start/status/stop with a fake local Hermes executable and temporary PID/log files. Confirmed the script saw both watchdog and fake gateway, then stopped them.
+No Hermes gateway, Telegram, model, or network connection was used.
+
+[HARNESS 5: Shizuku helper simulation]
+PASS: status, third-party package disable/enable, refusal to disable a system package, deviceidle add/remove, and Private DNS set/restore using a local fake rish executable backed only by temporary files.
+This is a mock of command flows, not a Shizuku or Android test.
+
+[HARNESS 6: Web UI localhost smoke]
+PASS: started UI on 127.0.0.1 with a temporary port; status reported RUNNING; GET / and GET /api/ping returned 200; unknown route returned 404; stop completed.
+No gateway socket or external API was used.
+
+[ADDITIONAL TARGETED REPRODUCTIONS / REVIEW FINDINGS]
+1. P2, custom HERMES_VENV mismatch: created two fake Hermes executables, one under a custom venv and one at the path inferred by web/server.py. A local POST /api/send returned DEFAULT_DERIVED_VENV; the custom executable was not invoked. Source: scripts/webui.sh:20-25,71; web/server.py:27-29,107-110.
+2. P2, missing Python: ran installer with temporary PATH containing no python/python3, a local checkout, and a pre-existing agent directory. Installer exit code was 0 and output included “Xong”, but no venv or Hermes executable existed. Source: install.sh:188-212; the curl-pipe repo clone also depends on git at install.sh:52-56.
+These are review findings; they are not PASS results.
+
+[ANDROID 14 / API 34]
+BLOCKED: no KVM, emulator, SDK tools, QEMU, or /dev/kvm in the sandbox; prior TCG boot did not complete.
+NOT RUN: real Termux install, Android reboot/boot persistence, Android watchdog revival, Shizuku operations, Telegram/gateway connectivity.
+No Android PASS is claimed. No secrets/API keys/paid models used. No footage captured and no video created.
+
+[RESULT]
+6/6 host-side harness groups passed on Linux, within the scopes above. Android 14/API 34 remains BLOCKED/NOT RUN. Two P2 review findings remain open; the code under test was not modified.
