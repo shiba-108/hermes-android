@@ -1,0 +1,37 @@
+# Secrets / nha cung cap
+.env
+auth.json
+*.key
+*.pem
+
+# Du lieu session
+sessions/
+state.db
+state.db-wal
+kanban.db
+
+# Cau hinh may (khong commit)
+config.yaml
+*.yaml.local
+
+# Log / tam
+*.log
+*.log.*
+*.tmp
+.cache/
+
+# Backup
+*.bak
+*.bak.*
+backups/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+venv/
+
+# OS
+.DS_Store
+Thumbs.db
