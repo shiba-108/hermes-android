@@ -1,133 +1,185 @@
-# No-root on Android: Termux:Boot and Shizuku
+# No-root on Android: Termux, Termux:Boot, and Shizuku
 
 ## The short answer
 
-**“No Root, Like Root” is a hook, not a claim of root-level access.** The current `hermes-android` installer is not a supported one-command install for a regular, non-root Termux app. Its default directories are under `/data/local/...`, and its boot scripts depend on Magisk/root. The repository has no Shizuku API integration.
+**“No Root, Like Root” is a hook, not a claim of root privileges.** The current installer has a non-root Termux path: project data defaults to `$HOME/.hermes-home`, the Python environment to `$HOME/hermes-venv`, and the Hermes Agent checkout to `$HOME/hermes-agent`. These paths can be overridden with `HERMES_HOME`, `HERMES_VENV`, and `HERMES_AGENT_DIR`.
 
-A manual Termux setup may be possible if you first install and configure Hermes Agent in Termux by its own instructions. Termux:Boot can then ask Termux to start a command after boot. This does not grant root, does not make the repository's Magisk scripts work, and has not been verified here on a physical Android device.
+The no-root watchdog can start and monitor only the Hermes gateway process it manages. It does not control other services or Android settings. Termux:Boot and Shizuku are optional and require explicit user actions. The implementation has not been verified on an Android device or emulator in this work; the commands below are documentation, not a device-test report.
 
-## What each option can and cannot do
+## Install and run the gateway
 
-| Option | What it can do | What it does not do for this repository |
-|---|---|---|
-| **Termux:Boot** | Run scripts inside the Termux app after Android boots, once the add-on is installed and opened. | Does not grant root or make `/data/adb/service.d/`, `iptables`, `setprop`, or other privileged operations available. It does not install Hermes Agent for this repo. |
-| **Shizuku via wireless debugging** | Let compatible Android apps use supported system APIs through a Shizuku server started with ADB-level privileges. | This repo is shell scripts, not a Shizuku-integrated Android app. Shizuku does not make these scripts root, and the wireless-debugging server must be started again after reboot on Android 11+. |
-| **Shizuku started with root** | Start Shizuku on a rooted device. | Still does not add Shizuku support to this repository; use the documented Magisk path if you already have root. |
+Run `install.sh` from the repository checkout in Termux. Review its output: if a dependency step fails or is skipped, check the local install log and fix that before continuing. Configure Hermes Agent's provider and channel credentials locally, following the upstream instructions; do not put secrets in this repository.
 
-Shizuku's ADB-backed permissions are limited and can vary across Android versions and manufacturers. See the [official setup guide](https://shizuku.rikka.app/guide/setup/) and [Shizuku project notes](https://github.com/RikkaApps/Shizuku). Termux:Boot's official instructions are in the [Termux:Boot README](https://github.com/termux/termux-boot#how-to-use).
-
-## Manual Termux:Boot template
-
-This is a **generic startup template**, not an installer or a tested hermes-android feature. Use it only after `hermes gateway run` works interactively in your Termux session and you have followed the [Hermes Agent instructions](https://github.com/NousResearch/hermes-agent) to install and configure the CLI there.
-
-1. Install Termux and the Termux:Boot add-on from compatible signing sources. Do not mix app/add-on sources with different signing keys. Open Termux:Boot once from its launcher.
-2. In Termux, verify that `hermes` is on the command path (`command -v hermes`) and that you can start the gateway manually. Configure provider/channel credentials locally using the upstream instructions; never put actual credentials in this repository or in a public video.
-3. Create the boot script below. It starts the already-installed CLI in the Termux user context and writes a private local log. If your manual setup needs environment variables or a different CLI path, configure those locally in the script or Termux profile; do not copy secrets into tracked project files.
+Start, inspect, and stop the no-root watchdog with:
 
 ```sh
-mkdir -p ~/.termux/boot
-cat > ~/.termux/boot/start-hermes <<'EOF'
-#!/data/data/com.termux/files/usr/bin/sh
-set -eu
-umask 077
-
-# Optional: helps keep the CPU awake; it is not a guarantee against OEM kills.
-if command -v termux-wake-lock >/dev/null 2>&1; then
-  termux-wake-lock || true
-fi
-
-sleep 10
-command -v hermes >/dev/null 2>&1 || exit 127
-mkdir -p "$HOME/.local/state/hermes"
-nohup hermes gateway run \
-  >> "$HOME/.local/state/hermes/gateway.log" 2>&1 \
-  </dev/null &
-EOF
-chmod 700 ~/.termux/boot/start-hermes
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" start
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" status
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" stop
 ```
 
-4. Reboot the phone, unlock it if your device requires that, then inspect the local log at `~/.local/state/hermes/gateway.log` and confirm the gateway/channel actually became available. Do not treat a shell process existing as proof that the Telegram connection or model call works.
-5. If Android or the phone manufacturer stops Termux in the background, review that device's battery/background settings and test again. A wake lock, Termux:Boot, or Shizuku cannot guarantee 24/7 uptime, network access, or successful provider requests.
+If you installed with custom paths, set `HERMES_HOME` and `HERMES_VENV` to the same values used during installation before running these commands. The watchdog supervises only its managed Hermes gateway. It does not start or manage Tailscale, the web UI, a DNS proxy, Android package settings, Doze, or Private DNS. Its process checks are defensive but do not prove that a channel connected or a model request succeeded; inspect the local logs and test the actual service.
 
-Termux:Boot runs scripts from `~/.termux/boot/` in sorted order and recommends launching its app once after install. Its documentation also mentions `termux-wake-lock` as an optional first action. Exact background behavior depends on the Android build and manufacturer.
+## Optional startup after reboot with Termux:Boot
 
-## Why the repository installer is not the no-root setup
+Termux:Boot is not enabled by the installer. Install it from a source compatible with your Termux app's signing key, open the Termux:Boot app once, and then explicitly install the Hermes hook:
 
-The current `install.sh` defaults include `/data/local/hermes-home`, `/data/local/hermes-venv`, and `/data/local/hermes-agent`. In a normal Termux app those are not the app's writable home. `service.d/` is copied only when the installer detects both root and Magisk, and the service scripts themselves use root/Magisk paths and commands. This guide does not claim that changing `HERMES_HOME` alone fixes those assumptions.
+```sh
+sh "$HOME/.hermes-home/scripts/termux-boot.sh" install
+```
 
-The repository also has no Android app component that calls the Shizuku API. Starting Shizuku does not satisfy the root checks in `install.sh` or provide automatic access to the repository's root-only operations.
+The hook is written under `~/.termux/boot/` and starts the no-root watchdog after boot. If a hook or config file already exists without the Hermes management marker, the hook-install script refuses to overwrite it. Remove only the Hermes-managed hook with:
+
+```sh
+sh "$HOME/.hermes-home/scripts/termux-boot.sh" uninstall
+```
+
+Uninstalling the hook does **not** stop a watchdog or gateway that is already running. If you want to stop those too, run `no-root-watchdog.sh stop` separately. After a reboot, check the boot and watchdog logs, then verify that the gateway and the channel actually work. Android and manufacturer background restrictions can still stop Termux.
+
+Termux:Boot's official README says scripts in `~/.termux/boot/` run in sorted order and suggests `termux-wake-lock` only if preventing sleep is desired. **The Hermes hook does not acquire a wake lock by default.** Termux documents both `termux-wake-lock` and `termux-wake-unlock`; a held lock can keep the device from deep sleep and increase battery use. If you deliberately opt in, manage the lock yourself, for example:
+
+```sh
+termux-wake-lock
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" start
+# Later, when the gateway no longer needs the lock:
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" stop
+termux-wake-unlock
+```
+
+Do not unlock while another Termux task still needs the lock. The hook does not automatically pair a lock with an unlock, and a wake lock cannot guarantee 24/7 uptime, connectivity, or provider availability. See the [Termux:Boot README](https://github.com/termux/termux-boot/blob/master/README.md) and [Termux wake-lock notes](https://wiki.termux.com/wiki/Termux-wake-lock).
+
+## Optional Shizuku operations
+
+This repository includes `scripts/shizuku-setup.sh`, an optional helper that uses `rish`. Install and start Shizuku yourself, install/configure `rish` in Termux using Shizuku's instructions, then grant the requested permission when prompted. Check readiness and available commands without making a system change:
+
+```sh
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" status
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" --help
+```
+
+Shizuku is a **limited integration, not root**. These operations run only when explicitly called; neither installation nor the watchdog invokes them automatically.
+
+- **Package state:** `pm show <package>` inspects one package. `pm disable <third-party-package>` only accepts the exact name of an installed third-party package. `pm enable <package>` only reverses a disable recorded by this helper. If a package was already disabled, the helper does not claim it can undo that pre-existing state.
+- **Doze whitelist:** `deviceidle show <package>` inspects a package. `deviceidle add <third-party-package>` adds only the specified installed third-party package if it was not already present. `deviceidle remove <package>` only removes a whitelist entry recorded as added by this helper; a pre-existing entry is left alone.
+- **Android Private DNS:** `private-dns show` inspects the setting; `private-dns set <hostname>` changes the **system-wide** Android Private DNS hostname; `private-dns restore` restores the saved earlier setting only if the current setting still matches the helper's change. Review the hostname and understand that this affects DNS for the device, not just Hermes.
+
+For example, after Shizuku/rish is ready:
+
+```sh
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" pm show com.example.app
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" deviceidle show com.termux
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" private-dns show
+```
+
+Any setting-changing command should be a deliberate choice. Check the helper's `--help` output for exact syntax and reversal commands before using `pm disable`, `deviceidle add`, or `private-dns set`. Android/ROM support and Shizuku permissions can vary. Shizuku's wireless-debugging startup on Android 11+ must be repeated after reboot under current system limitations; see the [official Shizuku setup guide](https://shizuku.rikka.app/guide/setup/).
+
+Android Private DNS uses **DNS-over-TLS (DoT), not DNS-over-HTTPS (DoH)**. Shizuku's shell-level access does not provide root, `iptables`, or a VPN service, so this helper does not create transparent system-wide DoH.
+
+## Other limitations and security notes
+
+- There is no 24/7 uptime guarantee. Power management, OEM restrictions, battery/thermal conditions, network availability, and provider limits can interrupt the gateway.
+- No-root web UI starts on `127.0.0.1` by default. It has no authentication. Setting `WEBUI_HOST` explicitly can expose it remotely; prefer a trusted interface such as the device's Tailscale address and do not expose it to the public internet. The existing root default remains `0.0.0.0` and is also unauthenticated. See [`../web/README.md`](../web/README.md).
+- Shizuku does not make the Magisk `service.d/` scripts, `iptables`, or other root-only operations available to ordinary Termux.
+- A successful shell command or a running PID does not prove that Telegram or another channel is connected, or that provider/model requests work. Verify the actual service on your device.
 
 ## Sources
 
 - [Termux:Boot official README](https://github.com/termux/termux-boot/blob/master/README.md)
+- [Termux wake-lock and wake-unlock notes](https://wiki.termux.com/wiki/Termux-wake-lock)
 - [Shizuku official setup guide](https://shizuku.rikka.app/guide/setup/)
-- [Shizuku official repository and permission notes](https://github.com/RikkaApps/Shizuku)
+- [Shizuku project repository](https://github.com/RikkaApps/Shizuku)
 - [Hermes Agent upstream repository](https://github.com/NousResearch/hermes-agent)
 
 ---
 
-# Android không root: Termux:Boot và Shizuku
+# Android không root: Termux, Termux:Boot và Shizuku
 
 ## Tóm tắt
 
-**“No Root, Like Root” là câu hook, không phải tuyên bố có quyền root.** Installer `hermes-android` hiện chưa phải cách cài một lệnh được hỗ trợ cho ứng dụng Termux thông thường không root. Đường dẫn mặc định nằm dưới `/data/local/...`, còn script khởi động cần Magisk/root. Repo chưa tích hợp API Shizuku.
+**“No Root, Like Root” là câu hook, không phải tuyên bố có quyền root.** Installer hiện có nhánh cài Termux không root: dữ liệu dự án mặc định ở `$HOME/.hermes-home`, môi trường Python ở `$HOME/hermes-venv` và mã Hermes Agent ở `$HOME/hermes-agent`. Có thể đổi các đường dẫn này bằng `HERMES_HOME`, `HERMES_VENV` và `HERMES_AGENT_DIR`.
 
-Có thể thử cấu hình Termux thủ công nếu bạn cài và cấu hình Hermes Agent trong Termux theo hướng dẫn riêng của dự án đó trước. Sau đó Termux:Boot có thể yêu cầu Termux chạy lệnh sau khi Android khởi động. Cách này không cấp root, không làm các script Magisk của repo hoạt động và chưa được xác minh trên thiết bị Android thật trong phiên làm việc này.
+Watchdog no-root chỉ khởi chạy và giám sát tiến trình Hermes gateway do chính nó quản lý. Nó không điều khiển dịch vụ khác hay cài đặt Android. Termux:Boot và Shizuku đều là tùy chọn, cần người dùng chủ động thao tác. Trong phần công việc này, implementation chưa được xác minh trên thiết bị Android hoặc emulator; các lệnh dưới đây là hướng dẫn, không phải báo cáo đã test trên máy.
 
-## Mỗi lựa chọn làm được gì — và không làm được gì
+## Cài và chạy gateway
 
-| Lựa chọn | Có thể làm gì | Không làm được gì cho repo này |
-|---|---|---|
-| **Termux:Boot** | Chạy script trong ứng dụng Termux sau khi Android boot, sau khi cài và mở add-on. | Không cấp root, không mở quyền vào `/data/adb/service.d/`, `iptables`, `setprop` hay thao tác đặc quyền khác. Không tự cài Hermes Agent cho repo này. |
-| **Shizuku qua wireless debugging** | Cho ứng dụng Android tương thích gọi một số system API qua Shizuku server được khởi động bằng quyền ADB. | Repo này là shell script, không phải ứng dụng Android đã tích hợp Shizuku. Shizuku không biến các script thành script root; trên Android 11+, server qua wireless debugging phải được khởi động lại sau mỗi lần reboot. |
-| **Shizuku khởi động bằng root** | Khởi động Shizuku trên máy đã root. | Vẫn không bổ sung hỗ trợ Shizuku vào repo; nếu đã root thì dùng đường Magisk được tài liệu hóa. |
+Chạy `install.sh` từ checkout của repo trong Termux. Đọc kết quả: nếu bước cài phụ thuộc bị lỗi hoặc bỏ qua, hãy xem log cài đặt trên máy và xử lý trước khi tiếp tục. Tự cấu hình provider và credential kênh cho Hermes Agent theo hướng dẫn upstream; không đưa secret vào repo.
 
-Quyền ADB của Shizuku có giới hạn và có thể khác nhau theo phiên bản Android/hãng máy. Xem [hướng dẫn setup chính thức](https://shizuku.rikka.app/guide/setup/) và [ghi chú dự án Shizuku](https://github.com/RikkaApps/Shizuku). Hướng dẫn Termux:Boot chính thức nằm trong [README Termux:Boot](https://github.com/termux/termux-boot#how-to-use).
-
-## Mẫu khởi chạy thủ công bằng Termux:Boot
-
-Đây là **mẫu khởi chạy chung**, không phải installer hay tính năng `hermes-android` đã được kiểm thử. Chỉ dùng sau khi lệnh `hermes gateway run` chạy được trong phiên Termux của bạn và bạn đã cài/cấu hình CLI theo [hướng dẫn Hermes Agent](https://github.com/NousResearch/hermes-agent).
-
-1. Cài Termux và add-on Termux:Boot từ nguồn có cùng chữ ký tương thích. Không trộn nguồn cài ứng dụng/add-on dùng khóa ký khác nhau. Mở Termux:Boot một lần từ màn hình ứng dụng.
-2. Trong Termux, kiểm tra `hermes` có trên PATH (`command -v hermes`) và chạy gateway thủ công được. Cấu hình credential provider/kênh riêng trên máy theo hướng dẫn upstream; tuyệt đối không chép credential thật vào repo hoặc video công khai.
-3. Tạo script boot bên dưới. Script chạy CLI đã cài trong quyền người dùng Termux và ghi log cục bộ với quyền hạn chế. Nếu cách cài thủ công của bạn cần biến môi trường hoặc đường dẫn CLI khác, cấu hình riêng trên máy/Termux; không đưa secret vào file được theo dõi trong repo.
+Khởi động, kiểm tra và dừng watchdog no-root:
 
 ```sh
-mkdir -p ~/.termux/boot
-cat > ~/.termux/boot/start-hermes <<'EOF'
-#!/data/data/com.termux/files/usr/bin/sh
-set -eu
-umask 077
-
-# Tùy chọn: giúp giữ CPU thức; không bảo đảm hãng máy sẽ không kill app.
-if command -v termux-wake-lock >/dev/null 2>&1; then
-  termux-wake-lock || true
-fi
-
-sleep 10
-command -v hermes >/dev/null 2>&1 || exit 127
-mkdir -p "$HOME/.local/state/hermes"
-nohup hermes gateway run \
-  >> "$HOME/.local/state/hermes/gateway.log" 2>&1 \
-  </dev/null &
-EOF
-chmod 700 ~/.termux/boot/start-hermes
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" start
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" status
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" stop
 ```
 
-4. Reboot điện thoại, mở khóa nếu thiết bị yêu cầu, rồi kiểm tra log cục bộ ở `~/.local/state/hermes/gateway.log` và xác minh gateway/kênh thực sự hoạt động. Chỉ thấy tiến trình shell còn sống không chứng minh Telegram đã kết nối hay model gọi được.
-5. Nếu Android hoặc hãng máy dừng Termux chạy nền, xem lại thiết lập pin/chạy nền riêng cho thiết bị rồi thử lại. Wake lock, Termux:Boot hay Shizuku đều không bảo đảm uptime 24/7, kết nối mạng hoặc yêu cầu provider thành công.
+Nếu cài bằng đường dẫn tùy chỉnh, hãy đặt `HERMES_HOME` và `HERMES_VENV` đúng như lúc cài trước khi chạy các lệnh. Watchdog chỉ giám sát Hermes gateway do nó quản lý. Nó không khởi chạy hoặc quản lý Tailscale, web UI, proxy DNS, cài đặt package Android, Doze hay Private DNS. Cơ chế kiểm tra process có biện pháp thận trọng nhưng không chứng minh kênh đã kết nối hay model request thành công; hãy kiểm tra log cục bộ và thử dịch vụ thực tế.
 
-Termux:Boot chạy các script trong `~/.termux/boot/` theo thứ tự tên và khuyến nghị mở ứng dụng một lần sau khi cài. Tài liệu cũng nêu `termux-wake-lock` là hành động đầu tùy chọn. Hành vi chạy nền chính xác phụ thuộc bản Android và hãng máy.
+## Tùy chọn tự chạy sau reboot bằng Termux:Boot
 
-## Vì sao installer của repo chưa phải đường cài không-root
+Installer không tự bật Termux:Boot. Cài Termux:Boot từ nguồn tương thích với khóa ký của ứng dụng Termux, mở ứng dụng Termux:Boot một lần, rồi chủ động cài hook Hermes:
 
-`install.sh` hiện mặc định dùng `/data/local/hermes-home`, `/data/local/hermes-venv` và `/data/local/hermes-agent`. Ứng dụng Termux thông thường không có quyền ghi vào các vị trí đó vì thư mục dữ liệu của nó riêng biệt. `service.d/` chỉ được chép khi installer phát hiện đồng thời root và Magisk; các script dịch vụ cũng dùng đường dẫn/lệnh root/Magisk. Tài liệu này không khẳng định chỉ cần đổi `HERMES_HOME` là sửa được các giả định đó.
+```sh
+sh "$HOME/.hermes-home/scripts/termux-boot.sh" install
+```
 
-Repo cũng không có thành phần ứng dụng Android gọi API Shizuku. Khởi động Shizuku không đáp ứng kiểm tra root của `install.sh` và không tự cấp quyền cho thao tác chỉ dành cho root trong repo.
+Hook được đặt dưới `~/.termux/boot/` và chạy watchdog no-root sau khi boot. Nếu đã có hook hoặc file cấu hình không mang marker quản lý của Hermes, script cài hook sẽ từ chối ghi đè. Chỉ gỡ hook do Hermes quản lý bằng:
+
+```sh
+sh "$HOME/.hermes-home/scripts/termux-boot.sh" uninstall
+```
+
+Gỡ hook **không** dừng watchdog hoặc gateway đang chạy. Nếu muốn dừng cả hai, chạy riêng `no-root-watchdog.sh stop`. Sau reboot, hãy kiểm tra log boot/watchdog rồi xác minh gateway và kênh thực sự hoạt động. Android và giới hạn chạy nền của từng hãng vẫn có thể dừng Termux.
+
+README chính thức Termux:Boot nói các script trong `~/.termux/boot/` chạy theo thứ tự tên và gợi ý `termux-wake-lock` nếu người dùng muốn ngăn máy ngủ. **Hook Hermes mặc định không bật wake lock.** Termux có cả `termux-wake-lock` và `termux-wake-unlock`; lock đang giữ có thể ngăn máy vào deep sleep và làm hao pin. Nếu chủ động chọn bật, hãy tự quản lý lock, ví dụ:
+
+```sh
+termux-wake-lock
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" start
+# Sau này, khi gateway không còn cần lock:
+sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" stop
+termux-wake-unlock
+```
+
+Không nhả lock khi một tác vụ Termux khác vẫn cần nó. Hook không tự ghép lệnh lock với unlock; wake lock cũng không bảo đảm uptime 24/7, mạng hay provider luôn sẵn sàng. Xem [README Termux:Boot](https://github.com/termux/termux-boot/blob/master/README.md) và [ghi chú wake-lock của Termux](https://wiki.termux.com/wiki/Termux-wake-lock).
+
+## Thao tác Shizuku tùy chọn
+
+Repo có helper tùy chọn `scripts/shizuku-setup.sh`, sử dụng `rish`. Tự cài và khởi động Shizuku, cài/cấu hình `rish` trong Termux theo hướng dẫn của Shizuku, rồi cấp quyền khi được hỏi. Kiểm tra trạng thái và lệnh có sẵn mà không thay đổi hệ thống:
+
+```sh
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" status
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" --help
+```
+
+Shizuku là **tích hợp giới hạn, không phải root**. Các thao tác chỉ chạy khi bạn gọi rõ ràng; installer và watchdog không tự gọi chúng.
+
+- **Trạng thái package:** `pm show <package>` xem một package. `pm disable <third-party-package>` chỉ nhận chính xác tên một ứng dụng bên thứ ba đã cài. `pm enable <package>` chỉ hoàn tác trạng thái disable có bản ghi do helper này tạo. Nếu package đã bị disable từ trước, helper không nhận quyền hoàn tác trạng thái có sẵn đó.
+- **Doze whitelist:** `deviceidle show <package>` xem package. `deviceidle add <third-party-package>` chỉ thêm package bên thứ ba được chỉ rõ nếu package chưa có trong whitelist. `deviceidle remove <package>` chỉ gỡ mục có bản ghi do helper thêm; mục có sẵn được giữ nguyên.
+- **Android Private DNS:** `private-dns show` xem cài đặt; `private-dns set <hostname>` đổi hostname Android Private DNS **toàn hệ thống**; `private-dns restore` chỉ khôi phục cấu hình đã lưu nếu cài đặt hiện tại vẫn khớp với thay đổi do helper tạo. Hãy xem hostname và hiểu rằng thay đổi này ảnh hưởng DNS của cả thiết bị, không chỉ Hermes.
+
+Ví dụ sau khi Shizuku/rish đã sẵn sàng:
+
+```sh
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" pm show com.example.app
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" deviceidle show com.termux
+sh "$HOME/.hermes-home/scripts/shizuku-setup.sh" private-dns show
+```
+
+Mọi lệnh đổi cài đặt cần được cân nhắc chủ động. Trước khi dùng `pm disable`, `deviceidle add` hay `private-dns set`, hãy xem `--help` để biết cú pháp và lệnh hoàn tác chính xác. Hỗ trợ Android/ROM và quyền Shizuku có thể khác nhau. Theo giới hạn hiện tại của hệ thống, cách khởi chạy Shizuku bằng wireless debugging trên Android 11+ cần thực hiện lại sau khi reboot; xem [hướng dẫn setup chính thức của Shizuku](https://shizuku.rikka.app/guide/setup/).
+
+Android Private DNS dùng **DNS-over-TLS (DoT), không phải DNS-over-HTTPS (DoH)**. Quyền shell qua Shizuku không cấp root, `iptables` hay VPN service, vì vậy helper không tạo DoH trong suốt cho toàn hệ thống.
+
+## Giới hạn khác và lưu ý an toàn
+
+- Không bảo đảm chạy 24/7. Quản lý pin, giới hạn của hãng, tình trạng pin/nhiệt độ, mạng và hạn mức provider đều có thể làm gateway gián đoạn.
+- Web UI no-root mặc định bind `127.0.0.1` và không có xác thực. Đặt `WEBUI_HOST` rõ ràng có thể mở truy cập từ xa; nên dùng giao diện tin cậy như địa chỉ Tailscale của máy và không mở ra Internet công cộng. Root vẫn mặc định bind `0.0.0.0` và cũng không có xác thực. Xem [`../web/README.md`](../web/README.md).
+- Shizuku không khiến script Magisk `service.d/`, `iptables` hoặc thao tác chỉ dành cho root chạy được trong Termux thông thường.
+- Lệnh shell thành công hoặc PID còn tồn tại không chứng minh Telegram/kênh đã kết nối hoặc provider/model hoạt động. Hãy xác minh dịch vụ thực tế trên thiết bị.
 
 ## Nguồn
 
 - [README Termux:Boot chính thức](https://github.com/termux/termux-boot/blob/master/README.md)
+- [Ghi chú Termux về wake-lock và wake-unlock](https://wiki.termux.com/wiki/Termux-wake-lock)
 - [Hướng dẫn Shizuku chính thức](https://shizuku.rikka.app/guide/setup/)
-- [Repo Shizuku chính thức và ghi chú về quyền](https://github.com/RikkaApps/Shizuku)
+- [Repo Shizuku](https://github.com/RikkaApps/Shizuku)
 - [Repo Hermes Agent upstream](https://github.com/NousResearch/hermes-agent)
