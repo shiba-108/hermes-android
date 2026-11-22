@@ -8,7 +8,7 @@ The no-root watchdog can start and monitor only the Hermes gateway process it ma
 
 ## Install and run the gateway
 
-Run `install.sh` from the repository checkout in Termux. Review its output: if a dependency step fails or is skipped, check the local install log and fix that before continuing. Configure Hermes Agent's provider and channel credentials locally, following the upstream instructions; do not put secrets in this repository.
+Run `install.sh` from the repository checkout in Termux. The installer exits with an error if Python or Git is missing or a required clone fails. Other venv/pip setup steps may still warn or be skipped; review its output and local install log before continuing. Configure Hermes Agent's provider and channel credentials locally, following the upstream instructions; do not put secrets in this repository.
 
 Start, inspect, and stop the no-root watchdog with:
 
@@ -102,7 +102,7 @@ Watchdog no-root chỉ khởi chạy và giám sát tiến trình Hermes gateway
 
 ## Cài và chạy gateway
 
-Chạy `install.sh` từ checkout của repo trong Termux. Đọc kết quả: nếu bước cài phụ thuộc bị lỗi hoặc bỏ qua, hãy xem log cài đặt trên máy và xử lý trước khi tiếp tục. Tự cấu hình provider và credential kênh cho Hermes Agent theo hướng dẫn upstream; không đưa secret vào repo.
+Chạy `install.sh` từ checkout của repo trong Termux. Installer thoát với lỗi nếu thiếu Python/Git hoặc clone bắt buộc thất bại. Một số bước tạo venv/cài pip khác vẫn có thể cảnh báo hoặc bị bỏ qua; hãy đọc kết quả và log cài đặt trên máy trước khi tiếp tục. Tự cấu hình provider và credential kênh cho Hermes Agent theo hướng dẫn upstream; không đưa secret vào repo.
 
 Khởi động, kiểm tra và dừng watchdog no-root:
 
