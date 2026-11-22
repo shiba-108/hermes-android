@@ -1,57 +1,49 @@
 # Web UI — chat với bot qua Tailscale (port 3000)
 
-Một web chat tối giản, self-hosted, chạy ngay trên điện thoại. Truy cập từ laptop
-qua Tailscale (hoặc LAN). **Không dùng tmux** — khởi động bằng `nohup` và được
-watchdog canh sống.
+Một web chat self-hosted, chạy trên điện thoại. Web UI **không có xác thực**: ai truy cập được cổng có thể gửi lệnh chat qua gateway. Không mở trực tiếp ra Internet.
 
 ## Yêu cầu
 
-- Đã cài hermes-agent + gateway chạy được (xem `install.sh`).
-- (Khuyến nghị) Tailscale để truy cập từ xa.
+- Đã cài hermes-agent + gateway (xem `install.sh`).
+- Web UI chỉ nên dùng trên giao diện mạng tin cậy; Tailscale là lựa chọn phù hợp nếu cấu hình bind đúng địa chỉ.
 
 ## Chạy
 
 ```sh
-scripts/webui.sh start      # nohup, PID ở ~/webui.pid, log ở logs/webui.log
+scripts/webui.sh start
 scripts/webui.sh status
 scripts/webui.sh stop
 scripts/webui.sh restart
 ```
 
-Mặc định cổng **3000**. Đổi bằng biến môi trường:
+Mặc định cổng **3000**. Đổi bằng `WEBUI_PORT=8080`.
+
+## Giao diện lắng nghe và bảo mật
+
+- **Termux không root:** mặc định chỉ bind `127.0.0.1`, vì UI không có auth. Vì vậy máy khác không thể truy cập cho đến khi người dùng chủ động chọn host.
+- **Root:** mặc định giữ hành vi cũ là bind `0.0.0.0` trên mọi giao diện để không làm đổi root flow. Vì UI không có auth, điều này có thể lộ UI trên LAN/Tailscale; không forward cổng ra Internet.
+- Nếu cần truy cập từ xa ở chế độ no-root, ưu tiên bind đúng địa chỉ Tailscale của điện thoại, ví dụ:
 
 ```sh
-WEBUI_PORT=8080 scripts/webui.sh start
+WEBUI_HOST=100.x.y.z scripts/webui.sh start
 ```
 
-## Truy cập
+Thay `100.x.y.z` bằng địa chỉ Tailscale thực tế. Đổi host cần restart Web UI. Không dùng `WEBUI_HOST=0.0.0.0` trừ khi chấp nhận UI không xác thực trên tất cả giao diện mạng.
 
-- **LAN:** `http://<ip-điện-thoại>:3000`
-- **Tailscale:** `http://<tailscale-ip>:3000` hoặc `http://<machine-name>:3000`
+Cổng và host có thể đặt cùng lúc:
 
-Chỉ cần mở trình duyệt, gõ tin nhắn → server gọi `hermes run --message "..."` và
-trả lời lại. Đồ họa tối giản (dark theme), chạy tốt trên mobile + desktop.
+```sh
+WEBUI_HOST=127.0.0.1 WEBUI_PORT=8080 scripts/webui.sh start
+```
 
 ## Watchdog
 
-`service.d/05-watchdog.sh` đã thêm đoạn tự revive webui mỗi 300s nếu `web/server.py`
-tồn tại mà tiến trình chết. Nếu bạn dùng bản Termux thuần, thêm dòng này vào crontab:
-
-```sh
-*/5 * * * * /data/local/hermes-home/scripts/webui.sh start
-```
-
-## Bảo mật
-
-- Web UI **không có auth**. Chỉ bind trong mạng Tailscale/LAN của bạn.
-- Nếu muốn mở ra Internet, hãy đặt sau Tailscale serve/funnel hoặc reverse proxy
-  có auth. **Không** expose trực tiếp cổng 3000 ra Internet.
+`service.d/05-watchdog.sh` tiếp tục revive web UI trong luồng root hiện có. Watchdog no-root chỉ quản lý Hermes gateway, không tự khởi chạy Web UI. Nếu cần chạy no-root, gọi `scripts/webui.sh start` rõ ràng sau khi đã chọn host phù hợp.
 
 ## Kiến trúc
 
 ```
-Trình duyệt ──HTTP──> web/server.py (port 3000) ──> hermes run --message ──> gateway ──> Telegram/model
+Trình duyệt ──HTTP──> web/server.py (port 3000, không auth) ──> hermes run --message ──> gateway
 ```
 
-`server.py` chỉ dùng stdlib (http.server, subprocess). Không cần npm, không cần
-Node. Chạy chung venv với gateway.
+`server.py` chỉ dùng stdlib (http.server, subprocess). Không cần npm, không cần Node. Chạy chung venv với gateway.

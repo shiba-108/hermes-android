@@ -1,64 +1,84 @@
 #!/system/bin/sh
 # =============================================================================
-# hermes-android installer — idempotent, tự nhận diện Magisk/Termux.
+# hermes-android installer v2 — auto-detect root/Magisk vs Termux no-root.
 #
 #   curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
 #
-# An toàn khi chạy lại: mọi file bị thay đều được backup .bak.<timestamp>.
-# KHÔNG dùng set -e khi bị pipe | bash (dễ thoát giữa chừng); ta tự set -u.
+# Root + Magisk keeps the existing service.d flow. No-root installs into the
+# Termux user's home and never changes Android system settings or boot startup.
 # =============================================================================
 set -u
 
 # ---------------------------------------------------------------------------
-# T0. Tìm thư mục repo (local theo dirname, hoặc clone tạm nếu pipe từ curl)
+# T0. Detect privilege and locate repo (local path or temporary clone for pipe).
 # ---------------------------------------------------------------------------
+IS_ROOT=0
+IS_MAGISK=0
+[ "$(id -u 2>/dev/null || true)" = "0" ] && IS_ROOT=1
+if [ -d /data/adb/magisk ] || [ -d /data/adb/modules ] || command -v magisk >/dev/null 2>&1; then
+  IS_MAGISK=1
+fi
+if [ "$IS_ROOT" = "1" ]; then MODE=root; else MODE=no-root; fi
+
+USER_HOME=${HOME:-/data/local/tmp}
+if [ "$MODE" = "root" ]; then
+  DEFAULT_HM=/data/local/hermes-home
+else
+  DEFAULT_HM="$USER_HOME/.hermes-home"
+fi
+HM="${HERMES_HOME:-$DEFAULT_HM}"
+
 REPO_DIR="${REPO_DIR:-}"
 if [ -n "$REPO_DIR" ] && [ -d "$REPO_DIR" ] && [ -f "$REPO_DIR/install.sh" ]; then
   :
 else
-  SCRIPT_PATH="$0"
-  case "$SCRIPT_PATH" in
-    /*) REPO_DIR=$(cd "$(dirname "$SCRIPT_PATH")" 2>/dev/null && pwd) ;;
-    *)  REPO_DIR="" ;;
+  SCRIPT_DIR=
+  case "$0" in
+    /*) SCRIPT_DIR=$(cd "$(dirname "$0")" 2>/dev/null && pwd) ;;
+    */*) SCRIPT_DIR=$(cd "$(dirname "$0")" 2>/dev/null && pwd) ;;
+    *) [ -f ./install.sh ] && SCRIPT_DIR=$(pwd) ;;
   esac
-fi
-
-if [ -z "$REPO_DIR" ] || [ ! -f "$REPO_DIR/install.sh" ] || [ ! -d "$REPO_DIR/service.d" ]; then
-  echo "==> Không thấy repo local, tải tạm về /data/local/tmp ..."
-  TMPREPO=/data/local/tmp/hermes-android-install
-  rm -rf "$TMPREPO"
-  mkdir -p /data/local/tmp 2>/dev/null || true
-  if command -v git >/dev/null 2>&1; then
-    git clone --depth 1 https://github.com/shiba-108/hermes-android.git "$TMPREPO" || {
-      echo "LỖI: git clone thất bại. Kiểm tra mạng."; exit 1; }
+  if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/install.sh" ] && [ -d "$SCRIPT_DIR/service.d" ]; then
+    REPO_DIR=$SCRIPT_DIR
   else
-    echo "LỖI: không có git để clone. Cài git trước."; exit 1
+    TMPBASE=${TMPDIR:-}
+    if [ -z "$TMPBASE" ] || [ ! -d "$TMPBASE" ] || [ ! -w "$TMPBASE" ]; then
+      TMPBASE="$USER_HOME/.cache"
+    fi
+    mkdir -p "$TMPBASE" 2>/dev/null || {
+      echo "LỖI: không tạo được thư mục tạm trong $TMPBASE"; exit 1; }
+    TMPREPO="$TMPBASE/hermes-android-install-$$"
+    echo "==> Không thấy repo local, clone tạm vào $TMPREPO ..."
+    if command -v git >/dev/null 2>&1; then
+      git clone --depth 1 https://github.com/shiba-108/hermes-android.git "$TMPREPO" || {
+        echo "LỖI: git clone thất bại. Kiểm tra mạng và cài git trong Termux."; exit 1; }
+    else
+      echo "LỖI: không có git để clone. Cài git trong Termux trước."; exit 1
+    fi
+    REPO_DIR=$TMPREPO
   fi
-  REPO_DIR="$TMPREPO"
 fi
+if [ ! -f "$REPO_DIR/install.sh" ] || [ ! -d "$REPO_DIR/service.d" ]; then
+  echo "LỖI: repo không đầy đủ: $REPO_DIR"; exit 1
+fi
+
 echo "==> Repo: $REPO_DIR"
+echo "==> Chế độ: $MODE | root=$IS_ROOT | magisk=$IS_MAGISK"
+echo "==> HERMES_HOME=$HM"
 
 # ---------------------------------------------------------------------------
-# T1. Xác định môi trường
+# T1. Writable application directories. No-root stays inside Termux HOME.
 # ---------------------------------------------------------------------------
-HM="${HERMES_HOME:-/data/local/hermes-home}"
 SD=/data/adb/service.d
 TS=$(date +%Y%m%d-%H%M%S)
-IS_MAGISK=0
-IS_ROOT=0
-[ "$(id -u 2>/dev/null)" = "0" ] && IS_ROOT=1
-if [ -d /data/adb/magisk ] || [ -d /data/adb/modules ] || command -v magisk >/dev/null 2>&1; then
-  IS_MAGISK=1
-fi
-echo "==> HERMES_HOME=$HM | root=$IS_ROOT | magisk=$IS_MAGISK"
-
-mkdir -p "$HM/scripts" "$HM/backups" "$HM/logs" 2>/dev/null || true
+mkdir -p "$HM/scripts" "$HM/backups" "$HM/logs" 2>/dev/null || {
+  echo "LỖI: không tạo được thư mục trong $HM"; exit 1; }
 if [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" ]; then
   mkdir -p "$SD" 2>/dev/null || true
 fi
 
 # ---------------------------------------------------------------------------
-# T2. service.d (chỉ khi có root + Magisk)
+# T2. service.d (root + Magisk only; original root flow retained).
 # ---------------------------------------------------------------------------
 if [ -d "$REPO_DIR/service.d" ] && [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" ]; then
   echo "==> service.d -> $SD"
@@ -75,7 +95,7 @@ if [ -d "$REPO_DIR/service.d" ] && [ "$IS_ROOT" = "1" ] && [ "$IS_MAGISK" = "1" 
     echo "  install $SD/$b"
   done
 else
-  echo "==> Bỏ qua service.d (cần root + Magisk). Termux thuần dùng nohup/watchdog thủ công."
+  echo "==> Bỏ qua service.d (chỉ dùng khi có root + Magisk)."
 fi
 
 # ---------------------------------------------------------------------------
@@ -97,7 +117,7 @@ if [ -d "$REPO_DIR/scripts" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# T4. locks -> $HM/backups (chỉ cài khi chưa có, tránh đè lock đang chạy)
+# T4. locks -> $HM/backups (install only if absent).
 # ---------------------------------------------------------------------------
 if [ -d "$REPO_DIR/locks" ]; then
   echo "==> locks -> $HM/backups"
@@ -114,7 +134,7 @@ if [ -d "$REPO_DIR/locks" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# T5. skills -> $HM/skills (chỉ cài khi chưa có)
+# T5. skills -> $HM/skills (install only if absent).
 # ---------------------------------------------------------------------------
 if [ -d "$REPO_DIR/skills" ]; then
   echo "==> skills -> $HM/skills"
@@ -132,7 +152,7 @@ if [ -d "$REPO_DIR/skills" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# T6. web/ -> $HM/web (nếu có)
+# T6. web/ -> $HM/web (if present).
 # ---------------------------------------------------------------------------
 if [ -d "$REPO_DIR/web" ]; then
   echo "==> web -> $HM/web"
@@ -141,13 +161,20 @@ if [ -d "$REPO_DIR/web" ]; then
 fi
 
 # ---------------------------------------------------------------------------
-# T7. venv + hermes-agent
+# T7. venv + hermes-agent.
 # ---------------------------------------------------------------------------
-VENV="${HERMES_VENV:-/data/local/hermes-venv}"
-AGENT="${HERMES_AGENT_DIR:-/data/local/hermes-agent}"
+if [ "$MODE" = "root" ]; then
+  VENV_DEFAULT=/data/local/hermes-venv
+  AGENT_DEFAULT=/data/local/hermes-agent
+else
+  VENV_DEFAULT="$USER_HOME/hermes-venv"
+  AGENT_DEFAULT="$USER_HOME/hermes-agent"
+fi
+VENV="${HERMES_VENV:-$VENV_DEFAULT}"
+AGENT="${HERMES_AGENT_DIR:-$AGENT_DEFAULT}"
 
 if [ ! -d "$AGENT" ]; then
-  echo "==> hermes-agent chưa có -> clone"
+  echo "==> hermes-agent chưa có -> clone vào $AGENT"
   if command -v git >/dev/null 2>&1; then
     git clone --depth 1 https://github.com/NousResearch/hermes-agent.git "$AGENT" || \
       echo "  CẢNH BÁO: clone hermes-agent thất bại, bỏ qua."
@@ -158,24 +185,34 @@ fi
 
 LOCK="$HM/backups/venv-requirements.android.lock"
 [ -f "$LOCK" ] || LOCK="$HM/backups/venv-requirements.lock"
+PYTHON=$(command -v python 2>/dev/null || command -v python3 2>/dev/null || true)
 
-if [ -d "$AGENT" ] && command -v python >/dev/null 2>&1; then
+if [ -d "$AGENT" ] && [ -n "$PYTHON" ]; then
   if [ ! -x "$VENV/bin/python" ]; then
     echo "==> tạo venv $VENV"
-    python -m venv "$VENV" 2>/dev/null || echo "  CẢNH BÁO: tạo venv thất bại."
+    "$PYTHON" -m venv "$VENV" 2>/dev/null || echo "  CẢNH BÁO: tạo venv thất bại."
   fi
   if [ -x "$VENV/bin/python" ]; then
     echo "==> pip install từ lock: $LOCK"
     "$VENV/bin/python" -m pip install --upgrade pip >>"$HM/logs/install-pip.log" 2>&1 || true
-    "$VENV/bin/python" -m pip install -r "$LOCK" >>"$HM/logs/install-pip.log" 2>&1 && \
-      echo "  venv OK" || echo "  CẢNH BÁO: pip install lỗi, xem $HM/logs/install-pip.log"
+    if "$VENV/bin/python" -m pip install -r "$LOCK" >>"$HM/logs/install-pip.log" 2>&1; then
+      if [ "$MODE" = "no-root" ]; then
+        # The Android lock pins runtime dependencies separately; install only the
+        # Hermes package metadata/entry point here, without silently re-resolving deps.
+        "$VENV/bin/python" -m pip install --no-deps -e "$AGENT" >>"$HM/logs/install-pip.log" 2>&1 && \
+          echo "  hermes-agent entry point OK" || echo "  CẢNH BÁO: cài hermes-agent lỗi, xem $HM/logs/install-pip.log"
+      fi
+      echo "  venv OK"
+    else
+      echo "  CẢNH BÁO: pip install lỗi, xem $HM/logs/install-pip.log"
+    fi
   fi
 else
-  echo "==> Bỏ qua tạo venv (thiếu hermes-agent hoặc python)."
+  echo "==> Bỏ qua tạo venv (thiếu hermes-agent hoặc Python)."
 fi
 
 # ---------------------------------------------------------------------------
-# T8. Tổng kết
+# T8. Summary
 # ---------------------------------------------------------------------------
 echo
 echo "============================================================"
@@ -183,14 +220,21 @@ echo " Xong."
 echo "   HERMES_HOME : $HM"
 echo "   venv        : $VENV"
 echo "   agent dir   : $AGENT"
-[ "$IS_MAGISK" = "1" ] && [ "$IS_ROOT" = "1" ] && echo " service.d  : $SD (có hiệu lực sau reboot)"
+if [ "$IS_MAGISK" = "1" ] && [ "$IS_ROOT" = "1" ]; then
+  echo " service.d    : $SD (có hiệu lực sau reboot)"
+fi
 echo
 echo " Bước tiếp theo:"
-echo "   1) Khai báo secret trong $HM/.env"
+echo "   1) Khai báo secret trong $HM/.env (không lưu trong repo)."
 echo "        OPENROUTER_API_KEY=..."
 echo "        TELEGRAM_BOT_TOKEN=..."
-echo "   2) Đặt model free:"
-echo "        hermes config set model.default baidu/ernie-5.5-flash-preview:free"
-echo "        hermes config set model.provider openrouter"
-echo "   3) Reboot máy (nạp service.d) rồi mở Telegram nhắn cho bot."
+echo "   2) Đặt model free bằng hermes config set như hướng dẫn README."
+if [ "$MODE" = "no-root" ]; then
+  echo "   3) Khởi chạy thủ công: sh $HM/scripts/no-root-watchdog.sh start"
+  echo "      Tùy chọn tự chạy sau reboot: cài/mở Termux:Boot, rồi chạy:"
+  echo "      sh $HM/scripts/termux-boot.sh install"
+  echo "   4) Shizuku và Private DNS là tùy chọn; installer không đổi quyền/cài đặt hệ thống."
+else
+  echo "   3) Reboot máy (nạp service.d nếu có Magisk), rồi mở Telegram nhắn cho bot."
+fi
 echo "============================================================"

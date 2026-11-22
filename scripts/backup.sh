@@ -11,7 +11,13 @@
 # =============================================================================
 set -u
 
-HM="${HERMES_HOME:-/data/local/hermes-home}"
+if [ -n "${HERMES_HOME:-}" ]; then
+  HM=$HERMES_HOME
+elif [ "$(id -u 2>/dev/null || true)" = "0" ]; then
+  HM=/data/local/hermes-home
+else
+  HM="${HOME:-/data/data/com.termux/files/home}/.hermes-home"
+fi
 OUT_DIR="$HM/backups"
 TS=$(date +%Y%m%d-%H%M%S)
 ARCHIVE="$OUT_DIR/hermes-secret-$TS.tar.gz"

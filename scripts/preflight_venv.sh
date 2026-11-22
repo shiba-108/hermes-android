@@ -1,14 +1,38 @@
 #!/system/bin/sh
-# Preflight hermes-venv: kiem tra tung goi trong lock file con dung ban, thieu/lech thi tu cai lai.
-# Chi doc trang thai + cai lai, khong restart gateway.
-PY=/data/local/hermes-venv/bin/python
-LOCK=/data/local/hermes-home/backups/venv-requirements.lock
-LOG=/data/local/hermes-home/logs/preflight.log
+# Preflight hermes-venv: compare installed packages to a pinned lock and repair drift.
+# Root defaults remain unchanged; Termux no-root uses only its own home and Android lock.
+set -u
 
-mkdir -p /data/local/hermes-home/logs
+if [ -n "${HERMES_HOME:-}" ]; then
+  HM=$HERMES_HOME
+elif [ "$(id -u 2>/dev/null || true)" = "0" ]; then
+  HM=/data/local/hermes-home
+else
+  HM="${HOME:-/data/data/com.termux/files/home}/.hermes-home"
+fi
+if [ -n "${HERMES_VENV:-}" ]; then
+  VENV=$HERMES_VENV
+elif [ "$(id -u 2>/dev/null || true)" = "0" ]; then
+  VENV=/data/local/hermes-venv
+else
+  VENV="${HOME:-/data/data/com.termux/files/home}/hermes-venv"
+fi
+PY="$VENV/bin/python"
+if [ -n "${HERMES_LOCK:-}" ]; then
+  LOCK=$HERMES_LOCK
+elif [ "$(id -u 2>/dev/null || true)" = "0" ]; then
+  LOCK="$HM/backups/venv-requirements.lock"
+else
+  LOCK="$HM/backups/venv-requirements.android.lock"
+  [ -f "$LOCK" ] || LOCK="$HM/backups/venv-requirements.lock"
+fi
+LOG="$HM/logs/preflight.log"
+
+mkdir -p "$HM/logs"
 echo "=== preflight $(date '+%F %T') ===" >> "$LOG"
 
 [ -f "$LOCK" ] || { echo "LOCK NOT FOUND: $LOCK" >> "$LOG"; exit 1; }
+[ -x "$PY" ] || { echo "PYTHON NOT FOUND: $PY" >> "$LOG"; exit 1; }
 
 broken=0
 while IFS= read -r line; do

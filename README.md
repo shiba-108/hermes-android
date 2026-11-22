@@ -33,13 +33,13 @@ Chụp ngay từ Telegram — máy chủ AI chạy trong túi bạn, điều khi
 
 ## ⚡ Quick Start
 
-**Yêu cầu duy nhất:** Android 12+ đã root Magisk (hoặc Termux), cắm sạc, có Wi-Fi.
+**Yêu cầu:** Android 12+, Termux; root + Magisk là tùy chọn. Cắm sạc và có Wi-Fi.
 
 ```sh
 curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
 ```
 
-Chạy xong → reboot → mở Telegram → nhắn cho bot. Xong. 🚀
+Installer tự nhận diện root/no-root. Root + Magisk: reboot để nạp `service.d`. Termux không root: chạy watchdog thủ công hoặc bật Termux:Boot theo [hướng dẫn no-root](docs/NO-ROOT.md). Sau đó mở Telegram và nhắn cho bot. 🚀
 
 > Muốn xem trước nội dung script? `curl -sSL .../install.sh | less` trước khi chạy.
 
@@ -79,7 +79,7 @@ chạy một process Python và giữ kết nối Telegram.
 
 ### Requirements
 
-- **Android 12+**, rooted with **Magisk** (recommended) or plain **Termux**.
+- **Android 12+** and **Termux**; Magisk root is optional. No-root setup is documented in [`docs/NO-ROOT.md`](docs/NO-ROOT.md).
 - **6 GB RAM+** (8–12 GB recommended). 3 GB works but is tight.
 - ~4 GB free storage, a wall charger, and Wi-Fi.
 - A Telegram bot token ([BotFather](https://t.me/BotFather)) and an OpenRouter account (free).
@@ -91,7 +91,7 @@ chạy một process Python và giữ kết nối Telegram.
 curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
 ```
 
-The installer is **idempotent** — safe to re-run. It backs up every file it replaces (`.bak.<timestamp>`), detects Magisk vs Termux, sets up the venv from the pinned Android lock file, installs `service.d/` scripts + skills, and runs `sh -n` on every script before finishing.
+The installer is **idempotent** — safe to re-run. It detects root/no-root, keeps the existing root + Magisk `service.d/` flow, and places no-root files under the Termux home. It does not enable Termux:Boot or alter Android package, Doze, or DNS settings automatically. See [`docs/NO-ROOT.md`](docs/NO-ROOT.md) for explicit opt-in controls and undo steps.
 
 Then set your secrets once:
 
@@ -130,10 +130,11 @@ hermes config set model.provider openrouter
 - **`service.d/05-watchdog.sh`** — every 300s, revives doh / gateway / tailscale if they die (checks PID **and** `Connected to Telegram` in the log).
 - **`service.d/hermes.sh`** — launches the gateway at boot.
 - **`scripts/preflight_venv.sh`** — verifies venv against the lock, repairs on drift.
+- **No-root Termux:** `scripts/no-root-watchdog.sh` supervises only the gateway. Termux:Boot and Shizuku operations are explicit opt-ins; Android Private DNS is DoT, not DoH. See [`docs/NO-ROOT.md`](docs/NO-ROOT.md).
 
 ### Web UI (chat from your laptop, no laptop-on-the-go)
 
-Prefer a browser? [`web/`](web/) runs a tiny self-hosted chat UI on port **3000** over Tailscale, started with `nohup` and kept alive by a watchdog — no `tmux` needed. See [`web/README.md`](web/README.md).
+Prefer a browser? [`web/`](web/) runs a tiny self-hosted chat UI on port **3000**. It has no authentication: no-root defaults to loopback, while remote access requires explicitly setting `WEBUI_HOST` (prefer the device's Tailscale IP). See [`web/README.md`](web/README.md) before exposing it.
 
 ### Backups
 
@@ -168,7 +169,7 @@ MIT — do whatever you want, no warranty. See [`LICENSE`](LICENSE).
 
 ### Đây là gì?
 
-`hermes-android` biến một chiếc điện thoại Android đã root thành **máy chủ AI 24/7 tự phục hồi**, chạy [Hermes Agent](https://github.com/NousResearch/hermes-agent) ngay trên máy và điều khiển qua **Telegram** — không cần VPS, không hóa đơn hàng tháng, chỉ dùng **model miễn phí**.
+`hermes-android` biến một chiếc điện thoại Android thành máy chủ AI chạy Hermes Agent và điều khiển qua **Telegram** — không cần VPS, không hóa đơn hàng tháng, chỉ dùng **model miễn phí**. Magisk root là tùy chọn; Termux không root có watchdog riêng với giới hạn của Android.
 
 - 🤖 Gateway Hermes chạy 24/7 trên điện thoại (Magisk `service.d` + watchdog).
 - 💬 Nhắn tin với nó ở bất cứ đâu qua Telegram (hoặc web UI qua Tailscale — xem [`web/`](web/)).
@@ -178,7 +179,7 @@ MIT — do whatever you want, no warranty. See [`LICENSE`](LICENSE).
 
 ### Yêu cầu
 
-- **Android 12+**, đã root **Magisk** (khuyến nghị) hoặc **Termux** thuần.
+- **Android 12+** và **Termux**; root + Magisk là tùy chọn. Xem [`docs/NO-ROOT.md`](docs/NO-ROOT.md) để biết watchdog, Termux:Boot và Shizuku.
 - **RAM 6 GB+** (khuyến nghị 8–12 GB). 3 GB chạy được nhưng chật.
 - ~4 GB trống, cắm sạc, có Wi-Fi.
 - Token bot Telegram ([BotFather](https://t.me/BotFather)) + tài khoản OpenRouter (free).
@@ -190,7 +191,7 @@ MIT — do whatever you want, no warranty. See [`LICENSE`](LICENSE).
 curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
 ```
 
-Script **idempotent** — chạy lại bao nhiêu lần cũng an toàn. Nó tự `.bak` mọi file cũ, tự nhận diện Magisk/Termux, tạo venv từ lock Android, copy `service.d/` + scripts + skills, và chạy `sh -n` kiểm tra cú pháp mọi script trước khi xong.
+Installer tự nhận diện root/no-root. Root + Magisk giữ nguyên luồng `service.d/`; Termux không root cài trong thư mục người dùng và không tự cài boot hook hay đổi package, Doze, DNS. Xem [`docs/NO-ROOT.md`](docs/NO-ROOT.md) để chủ động bật watchdog/Termux:Boot hoặc dùng Shizuku, kèm lệnh hoàn tác.
 
 Sau đó khai báo secret một lần:
 
@@ -200,7 +201,7 @@ OPENROUTER_API_KEY=sk-or-...
 TELEGRAM_BOT_TOKEN=123456:ABC...
 ```
 
-Reboot máy → mở Telegram → nhắn cho bot. Xong.
+Root + Magisk: reboot máy. No-root: chạy `sh "$HOME/.hermes-home/scripts/no-root-watchdog.sh" start` trong Termux; Termux:Boot là tùy chọn, bật bằng lệnh riêng trong tài liệu. Sau đó mở Telegram → nhắn cho bot.
 
 ### Model miễn phí
 
@@ -229,10 +230,11 @@ hermes config set model.provider openrouter
 - **`05-watchdog.sh`** — mỗi 300s hồi sinh doh / gateway / tailscale nếu chết (kiểm tra cả PID **lẫn** dòng `Connected to Telegram`).
 - **`hermes.sh`** — khởi động gateway khi boot.
 - **`preflight_venv.sh`** — đối chiếu venv với lock, tự sửa khi lệch.
+- **Termux không root:** `no-root-watchdog.sh` chỉ giám sát gateway; Termux:Boot và Shizuku là tùy chọn rõ ràng. Private DNS Android là DoT, không phải DoH. Xem [`docs/NO-ROOT.md`](docs/NO-ROOT.md).
 
 ### Web UI (chat từ laptop, không cần bật laptop)
 
-Thích dùng trình duyệt? [`web/`](web/) chạy một web chat nhỏ ở cổng **3000** qua Tailscale, khởi động bằng `nohup` + watchdog canh — không cần `tmux`. Xem [`web/README.md`](web/README.md).
+Thích dùng trình duyệt? [`web/`](web/) chạy web chat ở cổng **3000**. UI không có xác thực: no-root mặc định chỉ bind loopback; muốn truy cập từ xa phải đặt `WEBUI_HOST` rõ ràng (nên dùng IP Tailscale của điện thoại). Xem [`web/README.md`](web/README.md) trước khi mở host.
 
 ### Sao lưu
 
@@ -272,7 +274,7 @@ Có. Chỉ cần chạy 1 process Python + giữ kết nối Telegram. RAM 6GB+ 
 Tương đương một bóng đèn LED nhỏ. Cắm sạc + `stayon` là xong.
 
 **Q: Android có tự kill app không?**
-`03-nowake.sh` tắt Doze/battery optimization cho Hermes, watchdog `05-watchdog.sh` hồi sinh mỗi 5 phút. Bất tử qua reboot.
+Root + Magisk dùng `service.d` và watchdog root. Termux không root có watchdog riêng; Android vẫn có thể giới hạn nền, nên xem [`docs/NO-ROOT.md`](docs/NO-ROOT.md) và tự bật Termux:Boot nếu muốn.
 
 **Q: Model free có đủ xài không?**
 Đủ cho chat, tóm tắt, viết lách, assistant cá nhân. Không bằng GPT-4o cho code nặng, nhưng free 100% và không giới hạn token.
@@ -284,10 +286,10 @@ Qua Telegram (mọi lúc mọi nơi) hoặc web UI qua Tailscale (`web/`).
 `.env`, `auth.json`, `config.yaml`, `sessions/` đều nằm trong `.gitignore`. `scripts/backup.sh` mã hóa age trước khi đẩy lên repo private.
 
 **Q: Không root được thì sao?**
-Vẫn chạy được trên Termux thuần, nhưng thiếu mấy script `service.d/` (root). Xem `install.sh` phần auto-detect.
+Vẫn chạy được trên Termux thuần. Installer tự nhận diện và chọn thư mục người dùng; xem [`docs/NO-ROOT.md`](docs/NO-ROOT.md) để chạy watchdog và tùy chọn Termux:Boot/Shizuku.
 
 **Q: Điện thoại mới, chưa root, làm sao bắt đầu?**
-Root bằng Magisk theo `docs/DEVICES.md` cho đúng dòng máy của bạn, rồi chạy lệnh cài 1 dòng ở trên.
+Không bắt buộc root: cài Termux và chạy lệnh cài đặt ở trên. Nếu chọn root, xem `docs/DEVICES.md` theo đúng dòng máy.
 
 ---
 
