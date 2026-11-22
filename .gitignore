@@ -20,6 +20,7 @@ kanban.db-*
 
 # Cau hinh may (khong commit)
 config.yaml
+SOUL.md
 *.yaml.local
 provider_models_cache.json
 context_length_cache.yaml
