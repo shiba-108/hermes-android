@@ -10,7 +10,7 @@ Thanks for helping improve `hermes-android`. Keep changes reproducible, security
 - Keep documentation synchronized with installer paths, service scripts, and real behavior. Mark manual steps and opt-in behavior clearly; do not present them as automatic features.
 - Never commit `.env`, credentials, private config, session data, private keys, unredacted logs, or plaintext backups. Use placeholders such as `<YOUR_TOKEN>` in examples.
 - Review security effects before changing network/debugging behavior. In particular, document any ADB-over-TCP, firewall, web UI, package-state, Doze, or DNS changes and their exposure or rollback risks.
-- Do not run `scripts/preflight_venv.sh` with an untrusted lock or one a less-privileged account can modify, especially as root: the current script interpolates lock entries into Python source.
+- Preserve the root-mode lock trust check in `scripts/preflight_venv.sh`: it requires the lock and each parent directory to be root-owned and not group/other-writable, and refuses to continue otherwise.
 
 ## Local checks
 
@@ -44,7 +44,7 @@ Cảm ơn bạn đã giúp cải thiện `hermes-android`. Hãy giữ thay đổ
 - Giữ tài liệu khớp đường dẫn trong installer, service scripts và hành vi thật. Ghi rõ bước thủ công và thao tác tùy chọn; đừng mô tả như tính năng tự động.
 - Không commit `.env`, credential, cấu hình riêng tư, dữ liệu phiên, private key, log chưa che hoặc bản sao lưu chưa mã hóa. Dùng placeholder như `<YOUR_TOKEN>` trong ví dụ.
 - Xem xét tác động bảo mật trước khi đổi hành vi mạng/gỡ lỗi. Đặc biệt ghi rõ rủi ro lộ mạng hoặc hoàn tác liên quan đến ADB-over-TCP, firewall, web UI, trạng thái package, Doze hay DNS.
-- Không chạy `scripts/preflight_venv.sh` với lock không tin cậy hoặc lock mà tài khoản ít quyền có thể sửa, nhất là dưới root: script hiện nội suy lock entries vào mã Python.
+- Giữ nguyên bước kiểm tra độ tin cậy của lock trong `scripts/preflight_venv.sh` ở chế độ root: file lock và mọi thư mục cha phải thuộc root, không cho group/other ghi; không đạt thì script từ chối chạy.
 
 ## Kiểm tra cục bộ
 
