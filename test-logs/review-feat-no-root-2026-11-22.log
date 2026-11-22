@@ -52,3 +52,32 @@ No Android PASS is claimed. No secrets/API keys/paid models used. No footage cap
 
 [RESULT]
 6/6 host-side harness groups passed on Linux, within the scopes above. Android 14/API 34 remains BLOCKED/NOT RUN. Two P2 review findings remain open; the code under test was not modified.
+
+
+[ADDENDUM: LATEST FIX / HOST REGRESSION]
+Timestamp: 2026-11-22T10:10+07:00
+Code under test: 5622132f261aff804b3d798d8bab74dc038a3045 (feat/no-root).
+Report branch: test/emulator; source commit merged locally. No push performed.
+Host: Linux x86_64, uid 1000.
+
+[HARNESS: tests/no_root_harness.py]
+Command: python3 tests/no_root_harness.py
+PASS: 8/8 unittest cases. Coverage includes shell/Python syntax, host default bind behavior, installer refusal when Python/Git prerequisites are missing, root fail-closed trust checks, package-lock marker payload non-evaluation, and Web UI use of a custom venv via localhost.
+
+[SECURITY REGRESSION DETAIL]
+PASS on 5622132: a synthetic lock package name contained a benign marker payload that would touch only a file inside the harness temporary directory if evaluated as Python. The test confirmed the marker was not created. Synthetic dist-info and a fake venv Python were used; the pip stub performs no installation.
+EXPECTED FAIL negative control: copied the same regression harness into a temporary detached worktree at e46da08a417939efe0ee667e0637f99711fa7aff and ran the targeted test. The test failed because the marker file was created by the vulnerable string-interpolated Python expression. The temporary worktree and files were removed afterward.
+This validates the regression against the prior bug; it is not an exploit against the fixed commit and did not alter installed packages.
+
+[OTHER FIXED HOST FINDINGS]
+PASS: custom HERMES_VENV is used for the Web UI's Hermes invocation, verified with local stub executables.
+PASS: installer exits before completion when Python is absent; missing Git is rejected when an agent clone is required. Both checks use temporary paths and do not download dependencies.
+PASS: root preflight rejects an untrusted lock path in the simulated-root test.
+
+[ANDROID 14 / API 34]
+BLOCKED: /dev/kvm, adb, emulator, sdkmanager, avdmanager, and QEMU executables are absent; the earlier TCG boot attempt did not complete.
+NOT RUN: real Termux install, Android reboot/boot persistence, Android watchdog revival, Shizuku operations, Telegram/gateway connectivity.
+No Android PASS is claimed. No OnePlus 11R access, secrets, external APIs, paid models, or footage were used.
+
+[RESULT]
+Host harness: 8/8 PASS on the fixed source commit. The targeted negative control failed as expected on vulnerable e46da08, proving the marker regression detects the reported injection. Android 14/API 34 remains BLOCKED/NOT RUN.
