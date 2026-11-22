@@ -23,6 +23,12 @@ do
     sh /data/local/hermes-home/scripts/preflight_venv.sh
     nohup /data/local/hermes-venv/bin/hermes gateway run > /data/local/tmp/hermes.log 2>&1 &
   fi
+  # webui (port 3000) — chi revive khi file web/server.py ton tai
+  if [ -f /data/local/hermes-home/web/server.py ] \
+     && ! pgrep -f "web/server.py" > /dev/null 2>&1
+  then
+    sh /data/local/hermes-home/scripts/webui.sh start > /dev/null 2>&1
+  fi
   if ! pgrep -f com.tailscale.ipn > /dev/null 2>&1
   then
     monkey -p com.tailscale.ipn -c android.intent.category.LAUNCHER 1 > /dev/null 2>&1

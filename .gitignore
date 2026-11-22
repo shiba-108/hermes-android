@@ -1,29 +1,49 @@
 # Secrets / nha cung cap
 .env
+.env.*
 auth.json
 *.key
 *.pem
+*.p8
+*.p12
+log_hash_salt
+service-account*.json
+credentials*.json
 
 # Du lieu session
 sessions/
+*.session
 state.db
 state.db-wal
 kanban.db
+kanban.db-*
 
 # Cau hinh may (khong commit)
 config.yaml
 *.yaml.local
+provider_models_cache.json
+context_length_cache.yaml
+channel_directory.json
 
 # Log / tam
 *.log
 *.log.*
 *.tmp
 .cache/
+cache/
+tmp/
 
 # Backup
 *.bak
 *.bak.*
 backups/
+
+# PID / lock runtime
+*.pid
+*.lock
+*.sock
+# ...nhưng GIỮ lock requirements trong locks/
+!locks/*.lock
 
 # Python
 __pycache__/
@@ -31,6 +51,7 @@ __pycache__/
 *.egg-info/
 .venv/
 venv/
+web/node_modules/
 
 # OS
 .DS_Store

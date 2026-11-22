@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="460" height="720" viewBox="0 0 460 720" font-family="Segoe UI, Roboto, DejaVu Sans, sans-serif">
+  <defs>
+    <linearGradient id="av" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2f81f7"/><stop offset="1" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+  <rect width="460" height="720" rx="18" fill="#0e1621"/>
+  <!-- header -->
+  <circle cx="46" cy="44" r="20" fill="url(#av)"/>
+  <text x="46" y="50" font-size="20" text-anchor="middle" fill="#fff">🤖</text>
+  <text x="78" y="40" font-size="17" font-weight="600" fill="#fff">Hermes AI Server</text>
+  <text x="78" y="58" font-size="12" fill="#6ab04c">bot · online</text>
+  <line x1="0" y1="72" x2="460" y2="72" stroke="#17212b"/>
+
+  <!-- outgoing: check he thong -->
+  <rect x="250" y="88" width="196" height="38" rx="12" fill="#2b5278"/>
+  <rect x="434" y="88" width="12" height="38" rx="4" fill="#2b5278"/>
+  <text x="266" y="112" font-size="14" fill="#fff">check hệ thống</text>
+  <text x="430" y="112" font-size="11" fill="#8fb8d8" text-anchor="end">✓✓</text>
+
+  <!-- incoming system status -->
+  <rect x="14" y="138" width="420" height="212" rx="12" fill="#182533"/>
+  <text x="28" y="162" font-family="DejaVu Sans Mono, monospace" font-size="13" fill="#fff">
+    <tspan x="28" dy="0">🟢 HỆ THỐNG HERMES — ONEPLUS 11R</tspan>
+    <tspan x="28" dy="18" fill="#6a7a8a">──────────────────────────</tspan>
+    <tspan x="28" dy="18">• doh-proxy   : PID 812</tspan>
+    <tspan x="28" dy="17">• gateway     : PID 903 (Connected ✓)</tspan>
+    <tspan x="28" dy="17">• tailscale   : PID 1204</tspan>
+    <tspan x="28" dy="17">• watchdog    : PID 77</tspan>
+    <tspan x="28" dy="17">• webui :3000 : PID 1550</tspan>
+    <tspan x="28" dy="17">• ping google : 24 ms ✓</tspan>
+    <tspan x="28" dy="17">• uptime      : 3d 14h 22m</tspan>
+    <tspan x="28" dy="17">• RAM free    : 9.8 GB</tspan>
+    <tspan x="28" dy="17">• Disk /data  : 62% (28/45 GB)</tspan>
+    <tspan x="28" dy="17">• Pin         : 87% (đang sạc)</tspan>
+  </text>
+  <rect x="14" y="138" width="420" height="212" rx="12" fill="none" stroke="#1e2d3d"/>
+
+  <!-- model line + OK -->
+  <rect x="14" y="358" width="300" height="60" rx="12" fill="#182533"/>
+  <text x="28" y="382" font-size="13" fill="#5fd068">────────────────</text>
+  <text x="28" y="402" font-size="13" fill="#cfd8e3">Model: ernie-5.5-flash (free) · Mọi thứ OK ✅</text>
+
+  <!-- outgoing 2 -->
+  <rect x="270" y="430" width="176" height="38" rx="12" fill="#2b5278"/>
+  <rect x="434" y="430" width="12" height="38" rx="4" fill="#2b5278"/>
+  <text x="286" y="454" font-size="14" fill="#fff">tối ưu pin giúp mình</text>
+  <text x="430" y="454" font-size="11" fill="#8fb8d8" text-anchor="end">✓✓</text>
+
+  <!-- incoming 2 -->
+  <rect x="14" y="480" width="420" height="164" rx="12" fill="#182533"/>
+  <text x="28" y="506" font-family="DejaVu Sans Mono, monospace" font-size="13" fill="#5fd068">✅ Pin &amp; Doze:</text>
+  <text x="28" y="528" font-family="DejaVu Sans Mono, monospace" font-size="13" fill="#dfe6ee">
+    <tspan x="28" dy="0">• stay_on_while_plugged_in = 3 ✓</tspan>
+    <tspan x="28" dy="18">• deviceidle whitelist: Hermes ✓</tspan>
+    <tspan x="28" dy="18">• watchdog đang chạy → sống 24/7</tspan>
+    <tspan x="28" dy="18">• Battery temp 34°C (bình thường)</tspan>
+    <tspan x="28" dy="18" fill="#8a9bab"></tspan>
+    <tspan x="28" dy="18">Không cần tối ưu thêm. Máy</tspan>
+    <tspan x="28" dy="18">đang chạy ổn định, cắm sạc là xong 🔋</tspan>
+  </text>
+
+  <!-- input bar -->
+  <rect x="0" y="668" width="460" height="52" fill="#17212b"/>
+  <rect x="14" y="678" width="376" height="32" rx="16" fill="#242f3d"/>
+  <text x="30" y="699" font-size="14" fill="#7d8e9e">Nhắn...</text>
+  <circle cx="420" cy="694" r="19" fill="#2b5278"/>
+  <text x="420" y="700" font-size="18" fill="#fff" text-anchor="middle">➤</text>
+</svg>
