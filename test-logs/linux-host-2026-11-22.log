@@ -1,0 +1,54 @@
+Hermes Android emulator test log
+Date: 2026-11-22T09:37:02+07:00
+Commit: 2f19530
+Branch: test/emulator
+
+[ENVIRONMENT]
+Host: Linux x86_64, kernel 6.18.38+
+/dev/kvm: absent
+adb: not found
+emulator: not found
+sdkmanager: not found
+avdmanager: not found
+qemu-system-x86_64: not found
+qemu-system-aarch64: not found
+
+[TEST 1: shell syntax]
+PASS sh -n install.sh
+PASS sh -n scripts/backup.sh
+PASS sh -n scripts/preflight_venv.sh
+PASS sh -n scripts/webui.sh
+PASS sh -n service.d/02-adbd.sh
+PASS sh -n service.d/03-nowake.sh
+PASS sh -n service.d/04-doh.sh
+PASS sh -n service.d/05-watchdog.sh
+PASS sh -n service.d/hermes.sh
+Result: 9 shell files parsed successfully on Linux.
+
+[TEST 2: Python syntax]
+PASS ast.parse scripts/make_lock.py
+PASS ast.parse web/server.py
+Result: 2 Python files parsed successfully; dependencies were not installed.
+
+[TEST 3: curl | bash installer on Linux]
+Method: served the checkout from a local HTTP server and piped curl output into bash twice. Used isolated temporary HERMES_HOME, pre-existing empty agent directory, and a stub venv/bin/python that logged pip arguments and returned success. The readiness poll had an initial connection-refused while the local HTTP server started; subsequent curl requests and both installer runs succeeded.
+PASS first installer run copied scripts, locks, skills, and web files into the isolated directory.
+PASS second run kept existing lock/skills and created .bak.<timestamp> copies for replaced scripts.
+NOTE: this is a Linux file-copy/idempotency harness, not Termux. The stub prevented pip/dependency downloads; Hermes/Android packages were not installed. The raw GitHub production URL was not used.
+Cleanup: test web server and temporary fixture stopped/removed; listener check showed no process on test ports 18765 or 50253.
+
+[TEST 4: web UI service and HTTP smoke]
+PASS scripts/webui.sh start; server reported a PID and accepted requests.
+PASS GET / returned 200 with the UI HTML.
+PASS GET /api/ping returned 200 with {"ok": false, "model": "?"} while no gateway socket existed.
+PASS GET /missing returned 404.
+PASS scripts/webui.sh status reported RUNNING; stop reported the service stopped.
+NOTE: this does not exercise service.d/05-watchdog.sh or Android process management. No Hermes gateway/API key was used.
+
+[ANDROID TESTS]
+BLOCKED: no Android 14/API 34 emulator, adb, SDK tools, QEMU, or /dev/kvm in this sandbox. The previously attempted TCG boot did not complete.
+NOT RUN: real Termux no-root install, production curl|bash on Android, device reboot/boot persistence, Termux:Boot, watchdog process revival, Telegram/gateway connectivity.
+No Android PASS is claimed. No screen footage was captured; no video was created.
+
+[RESULT]
+Host-side checks support only Linux shell/Python syntax, installer file-copy/idempotency behavior in a stubbed environment, and basic web UI HTTP behavior. They do not establish Android 14/API 34 or Termux compatibility.
