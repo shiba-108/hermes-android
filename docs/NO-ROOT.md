@@ -80,6 +80,7 @@ Android Private DNS uses **DNS-over-TLS (DoT), not DNS-over-HTTPS (DoH)**. Shizu
 - There is no 24/7 uptime guarantee. Power management, OEM restrictions, battery/thermal conditions, network availability, and provider limits can interrupt the gateway.
 - No-root web UI starts on `127.0.0.1` by default. It has no authentication. Setting `WEBUI_HOST` explicitly can expose it remotely; prefer a trusted interface such as the device's Tailscale address and do not expose it to the public internet. The existing root default remains `0.0.0.0` and is also unauthenticated. See [`../web/README.md`](../web/README.md).
 - Shizuku does not make the Magisk `service.d/` scripts, `iptables`, or other root-only operations available to ordinary Termux.
+- If you use the separate root + Magisk mode, its service scripts load commands, libraries, and scripts from Termux/Hermes paths through `PATH`, `LD_LIBRARY_PATH`, and `LD_PRELOAD`. Protect those paths from less-privileged modification; the installer also clones the current repository branch without pinning a commit or checking a signature, so inspect the source before running it as root.
 - A successful shell command or a running PID does not prove that Telegram or another channel is connected, or that provider/model requests work. Verify the actual service on your device.
 
 ## Sources
@@ -174,6 +175,7 @@ Android Private DNS dùng **DNS-over-TLS (DoT), không phải DNS-over-HTTPS (Do
 - Không bảo đảm chạy 24/7. Quản lý pin, giới hạn của hãng, tình trạng pin/nhiệt độ, mạng và hạn mức provider đều có thể làm gateway gián đoạn.
 - Web UI no-root mặc định bind `127.0.0.1` và không có xác thực. Đặt `WEBUI_HOST` rõ ràng có thể mở truy cập từ xa; nên dùng giao diện tin cậy như địa chỉ Tailscale của máy và không mở ra Internet công cộng. Root vẫn mặc định bind `0.0.0.0` và cũng không có xác thực. Xem [`../web/README.md`](../web/README.md).
 - Shizuku không khiến script Magisk `service.d/`, `iptables` hoặc thao tác chỉ dành cho root chạy được trong Termux thông thường.
+- Nếu dùng riêng luồng root + Magisk, service scripts nạp lệnh, thư viện và script từ đường dẫn Termux/Hermes qua `PATH`, `LD_LIBRARY_PATH` và `LD_PRELOAD`. Bảo vệ các đường dẫn đó để tài khoản ít quyền không sửa được; installer cũng clone nhánh hiện tại của repo mà không ghim commit hay kiểm tra chữ ký, nên hãy đọc mã nguồn trước khi chạy dưới root.
 - Lệnh shell thành công hoặc PID còn tồn tại không chứng minh Telegram/kênh đã kết nối hoặc provider/model hoạt động. Hãy xác minh dịch vụ thực tế trên thiết bị.
 
 ## Nguồn
