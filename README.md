@@ -1,296 +1,101 @@
-<div align="center">
+# hermes-android
 
-# 🤖 hermes-android
+## “No Root, Like Root” — a hook, not a promise
 
-### Turn your old Android into a 24/7 AI server — No VPS, Free models only
+A small set of scripts and notes for running the [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway on Android.
 
-**Biến điện thoại Android cũ thành máy chủ AI chạy 24/7 — Không cần VPS, chỉ dùng model miễn phí**
+> **Reality check:** this repository's boot-service path is for a rooted device with Magisk. The installer is **not currently a supported one-command setup for an ordinary, non-root Termux app**, and this project does not integrate with Shizuku. The no-root notes describe a manual, experimental Termux:Boot route only after Hermes already works in Termux.
 
-[![Install](https://img.shields.io/badge/install-1%20command-2ea44f?style=for-the-badge)](#-quick-start)
-[![Android](https://img.shields.io/badge/Android-12%2B-3ddc84?style=for-the-badge&logo=android&logoColor=white)](#-requirements)
-[![No VPS](https://img.shields.io/badge/No%20VPS-%E2%9C%85-2ea44f?style=for-the-badge)](#-why-this-hits-different)
-[![Models](https://img.shields.io/badge/Models-100%25%20free-ff6b6b?style=for-the-badge)](#-free-models-only)
-[![Telegram](https://img.shields.io/badge/Telegram-24%2F7%20bot-26a5e4?style=for-the-badge&logo=telegram&logoColor=white)](#-demo)
-[![License](https://img.shields.io/badge/License-MIT-blue?style=for-the-badge)](#-license)
-
-[🇬🇧 English](#-english) · [🇻🇳 Tiếng Việt](#-tiếng-việt)
-
-</div>
+[English](#english) · [Tiếng Việt](#tiếng-việt)
 
 ---
 
-## 📸 Demo
+## English
 
-Chụp ngay từ Telegram — máy chủ AI chạy trong túi bạn, điều khiển qua tin nhắn:
+### What this repository does
 
-<p align="center">
-  <img src="docs/demo-telegram.svg" alt="Hermes Telegram bot controlling the Android AI server" width="400"/>
-</p>
+This repository contains an installer, Android service scripts, dependency lock files, backup helpers, and an optional small web chat UI for an existing Hermes Agent setup. It is a self-hosting experiment—not an Android compatibility guarantee, managed cloud service, or promise of continuous uptime.
 
-> 💡 Không có VPS. Không hóa đơn hàng tháng. Chỉ một chiếc điện thoại cũ + Telegram.
+The Magisk boot scripts attempt to start the gateway and run device/network helpers. The installer copies `service.d/` scripts only when it detects **both root and Magisk**. It also attempts to prepare the Hermes Agent directory and Python environment; some steps are skipped with a warning when required tools or directories are unavailable.
 
----
+### Requirements and supported path
 
-## ⚡ Quick Start
+- A rooted Android device with Magisk for the repository's `service.d/` boot path.
+- Network access and enough storage/RAM for Hermes Agent and its Python dependencies. Hardware needs vary by model and workload; the values in [`docs/DEVICES.md`](docs/DEVICES.md) are project notes, not guarantees.
+- A configured Hermes Agent provider and any channel credentials you choose to use. Provider pricing, free tiers, quotas, and model availability can change; this repository does not enforce “free models only” or unlimited usage.
 
-**Yêu cầu duy nhất:** Android 12+ đã root Magisk (hoặc Termux), cắm sạc, có Wi-Fi.
+The device report currently identifies a OnePlus 11R as the project's real-device test entry. Other device rows are labelled as community/experimental notes. Do not assume that a device, Android version, or root method is verified just because it appears in a requirements table.
 
-```sh
-curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
-```
+### Install notes
 
-Chạy xong → reboot → mở Telegram → nhắn cho bot. Xong. 🚀
+Review [`install.sh`](install.sh) before running it. Its defaults include `/data/local/hermes-home`, `/data/local/hermes-venv`, and `/data/local/hermes-agent`; `service.d/` scripts use Magisk/root-specific paths and commands. A plain Termux app normally cannot write those locations. Setting `HERMES_HOME` alone does not convert the hard-coded boot scripts into a rootless install.
 
-> Muốn xem trước nội dung script? `curl -sSL .../install.sh | less` trước khi chạy.
+The installer does **not** provision your provider account or create valid credentials. Configure Hermes Agent and its secrets locally, following the upstream project and your selected provider's instructions. Never commit tokens, private configuration, session data, or unredacted logs.
 
----
+For an ordinary non-root Termux setup, read [`docs/NO-ROOT.md`](docs/NO-ROOT.md) first. That route is manual and is not an installer-supported deployment.
 
-## 💥 Why this hits different
+### What not to assume
 
-Một chiếc Android cũ (RAM 6GB+, còn pin chai) thừa sức chạy một AI server 24/7.
-Trong khi đó VPS Lightsail/Fly.io tính tiền bạn mỗi tháng để làm đúng một việc:
-chạy một process Python và giữ kết nối Telegram.
+- **No root equivalence:** Shizuku is not wired into this repository and does not turn its shell scripts into root scripts.
+- **No guaranteed 24/7 service:** Android power management, OEM restrictions, network availability, thermal behavior, and external providers can interrupt operation.
+- **No guaranteed self-healing:** the current gateway launcher writes to `/data/local/tmp/hermes.log`, while the watchdog checks `/data/local/hermes-home/logs/gateway.log`. Treat the watchdog as experimental; its current log-path mismatch means it is not reliable proof of gateway health or recovery.
+- **Review optional network helpers:** `02-adbd.sh` attempts to enable ADB over TCP on port 5555; do not enable remote debugging on an untrusted network. `04-doh.sh` uses root-level `iptables` rules.
+- **Web UI caution:** the web UI has no authentication. Keep it on a trusted LAN/Tailscale network and do not expose port 3000 directly to the public internet. See [`web/README.md`](web/README.md).
+- **Backup caution:** `scripts/backup.sh` warns if encryption tools/recipients are missing, but can leave a plaintext archive locally. Read [`docs/BACKUP.md`](docs/BACKUP.md) before using remote backup options.
 
-| | **VPS Lightsail** | **Android cũ (repo này)** |
-|---|---|---|
-| Chi phí | ~$5–10 / tháng | **$0** (điện thoại đã có) |
-| Setup | 30–60 phút, firewall, systemd, OS | **1 lệnh** |
-| Model | trả phí theo token (gpt-4o, claude...) | **free 100%** (ernie / ling / particle) |
-| RAM | 1–2 GB | 6–12 GB (OnePlus 11R: 16GB) |
-| Giữ máy | cần, dễ bị idle/kill | **cắm sạc + stayon + watchdog** |
-| Sửa lỗi | SSH từ máy khác | **ngồi tại chỗ, rút sđt ra là sửa** |
-| Chi phí ẩn | bandwidth, snapshot, idle | **0đ** (điện chạy sẵn) |
+### Project notes
 
-**TL;DR:** Android cũ = VPS miễn phí, cấu hình sẵn, không hóa đơn, không giới hạn.
+- [Device notes and current test report](docs/DEVICES.md)
+- [Manual no-root notes: Termux:Boot and Shizuku](docs/NO-ROOT.md)
+- [Backup guide](docs/BACKUP.md)
+- [Web UI guide](web/README.md)
+- [Contributing](CONTRIBUTING.md)
+- [License](LICENSE)
 
----
-
-## 🇬🇧 English
-
-### What is this?
-
-`hermes-android` turns a rooted Android phone into a self-healing **24/7 AI server** that runs the [Hermes Agent](https://github.com/NousResearch/hermes-agent) gateway on-device and exposes it to you through **Telegram** — no VPS, no monthly bill, running only **free-tier models**.
-
-- 🤖 Hermes Agent gateway runs 24/7 on the phone (Magisk `service.d` + watchdog).
-- 💬 Chat with it anywhere via Telegram (or a web UI over Tailscale — see [`web/`](web/)).
-- 🆓 Uses only free models — see [Free models only](#-free-models-only).
-- 🛡️ Survives reboots, network drops, OOM kills and Android's battery optimization.
-- 📦 Everything you need is in this repo — one `curl | bash` and you're up.
-
-### Requirements
-
-- **Android 12+**, rooted with **Magisk** (recommended) or plain **Termux**.
-- **6 GB RAM+** (8–12 GB recommended). 3 GB works but is tight.
-- ~4 GB free storage, a wall charger, and Wi-Fi.
-- A Telegram bot token ([BotFather](https://t.me/BotFather)) and an OpenRouter account (free).
-- See [`docs/DEVICES.md`](docs/DEVICES.md) for tested devices & per-device notes.
-
-### Quick start (1 command)
-
-```sh
-curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
-```
-
-The installer is **idempotent** — safe to re-run. It backs up every file it replaces (`.bak.<timestamp>`), detects Magisk vs Termux, sets up the venv from the pinned Android lock file, installs `service.d/` scripts + skills, and runs `sh -n` on every script before finishing.
-
-Then set your secrets once:
-
-```sh
-# ~/.hermes-home/.env  (already gitignored)
-OPENROUTER_API_KEY=sk-or-...
-TELEGRAM_BOT_TOKEN=123456:ABC...
-```
-
-Reboot the phone. Open Telegram, message your bot. Done.
-
-### Free models only
-
-This project **only** uses free-tier models. No paid keys, ever.
-
-| Role | Model |
-|---|---|
-| **Default** | `baidu/ernie-5.5-flash-preview:free` |
-| **Fallback 1** | `inclusionai/ling-3.2-flash:free` |
-| **Fallback 2** | `particle-ai/particle-1:free` |
-
-Set them with:
-
-```sh
-hermes config set model.default baidu/ernie-5.5-flash-preview:free
-hermes config set model.provider openrouter
-```
-
-> 63-model `/model` menu cache? Clear it with `hermes config clear model_cache` (details in [`BI-KIP.md`](BI-KIP.md)).
-
-### How it stays alive (self-healing)
-
-- **`service.d/02-adbd.sh`** — re-enable ADB over TCP (optional, for remote access).
-- **`service.d/03-nowake.sh`** — `svc power stayon true` + disable Doze, so Android never sleeps the process.
-- **`service.d/04-doh.sh`** — DNS-over-HTTPS proxy + iptables NAT on :53 (unblocks Telegram/DNS).
-- **`service.d/05-watchdog.sh`** — every 300s, revives doh / gateway / tailscale if they die (checks PID **and** `Connected to Telegram` in the log).
-- **`service.d/hermes.sh`** — launches the gateway at boot.
-- **`scripts/preflight_venv.sh`** — verifies venv against the lock, repairs on drift.
-
-### Web UI (chat from your laptop, no laptop-on-the-go)
-
-Prefer a browser? [`web/`](web/) runs a tiny self-hosted chat UI on port **3000** over Tailscale, started with `nohup` and kept alive by a watchdog — no `tmux` needed. See [`web/README.md`](web/README.md).
-
-### Backups
-
-[`scripts/backup.sh`](scripts/backup.sh) encrypts your `.env`, `auth.json`, `config.yaml` and `sessions/` into an age-encrypted archive and pushes it to a **private** repo (or Google Drive via `rclone`). It **never** pushes secrets to this public repo. See [`docs/BACKUP.md`](docs/BACKUP.md).
-
-### Repo layout
-
-```
-hermes-android/
-├── README.md              # you are here
-├── BI-KIP.md              # field notes: commands, pitfalls, fixes
-├── install.sh             # idempotent installer (Magisk + Termux)
-├── service.d/             # Magisk boot scripts (root)
-├── scripts/               # preflight_venv, backup, make_lock
-├── locks/                 # pinned venv requirements (Android-safe)
-├── skills/                # Hermes skills (sys-status, sys-logs, ...)
-├── web/                   # self-hosted chat UI (Tailscale :3000)
-└── docs/                  # DEVICES.md, BACKUP.md
-```
-
-### Contributing
-
-PRs welcome — especially new device reports for [`docs/DEVICES.md`](docs/DEVICES.md). Keep the golden rule: **free models only, no secrets in git**.
-
-### License
-
-MIT — do whatever you want, no warranty. See [`LICENSE`](LICENSE).
+The existing `docs/demo-telegram.svg` is an **illustrative mockup**, not a live capture or proof of reported telemetry. No real video footage is included with this repository.
 
 ---
 
-## 🇻🇳 Tiếng Việt
+## Tiếng Việt
 
-### Đây là gì?
+### Repo này làm gì?
 
-`hermes-android` biến một chiếc điện thoại Android đã root thành **máy chủ AI 24/7 tự phục hồi**, chạy [Hermes Agent](https://github.com/NousResearch/hermes-agent) ngay trên máy và điều khiển qua **Telegram** — không cần VPS, không hóa đơn hàng tháng, chỉ dùng **model miễn phí**.
+Repo này gồm installer, các script dịch vụ Android, file khóa phiên bản phụ thuộc, công cụ sao lưu và một web chat nhỏ tùy chọn cho bộ cài Hermes Agent có sẵn. Đây là thử nghiệm tự host — không phải cam kết tương thích mọi máy Android, dịch vụ cloud được quản lý hay bảo đảm chạy liên tục.
 
-- 🤖 Gateway Hermes chạy 24/7 trên điện thoại (Magisk `service.d` + watchdog).
-- 💬 Nhắn tin với nó ở bất cứ đâu qua Telegram (hoặc web UI qua Tailscale — xem [`web/`](web/)).
-- 🆓 Chỉ dùng model free — xem [Model miễn phí](#-model-miễn-phí).
-- 🛡️ Sống sót qua reboot, mất mạng, bị Android kill, tối ưu pin.
-- 📦 Tất cả nằm trong repo này — một lệnh `curl | bash` là chạy.
+Các script boot dành cho Magisk cố gắng khởi chạy gateway và một số tác vụ hệ thống/mạng. Installer chỉ chép `service.d/` khi phát hiện **đồng thời có root và Magisk**. Installer cũng thử chuẩn bị thư mục Hermes Agent và môi trường Python; một số bước có thể bị bỏ qua kèm cảnh báo nếu thiếu công cụ hoặc thư mục phù hợp.
 
-### Yêu cầu
+### Yêu cầu và đường chạy được hỗ trợ
 
-- **Android 12+**, đã root **Magisk** (khuyến nghị) hoặc **Termux** thuần.
-- **RAM 6 GB+** (khuyến nghị 8–12 GB). 3 GB chạy được nhưng chật.
-- ~4 GB trống, cắm sạc, có Wi-Fi.
-- Token bot Telegram ([BotFather](https://t.me/BotFather)) + tài khoản OpenRouter (free).
-- Xem [`docs/DEVICES.md`](docs/DEVICES.md) để biết máy đã test và lưu ý từng dòng.
+- Máy Android đã root bằng Magisk để dùng đường khởi động `service.d/` của repo.
+- Có mạng và đủ dung lượng/RAM cho Hermes Agent cùng các gói Python. Nhu cầu tùy thiết bị và tác vụ; số liệu trong [`docs/DEVICES.md`](docs/DEVICES.md) là ghi chú của dự án, không phải bảo đảm.
+- Tự cấu hình provider cho Hermes Agent và thông tin đăng nhập của kênh bạn chọn. Giá, gói miễn phí, hạn mức và model của provider có thể thay đổi; repo này không ép dùng “model miễn phí” hay bảo đảm không giới hạn.
 
-### Cài đặt (1 lệnh)
+Danh sách thiết bị hiện ghi OnePlus 11R là mục đã chạy thực tế của dự án. Các dòng máy khác được đánh dấu là ghi chú cộng đồng/thử nghiệm. Đừng coi thiết bị, phiên bản Android hay phương thức root là đã xác minh chỉ vì chúng xuất hiện trong bảng yêu cầu.
 
-```sh
-curl -sSL https://raw.githubusercontent.com/shiba-108/hermes-android/main/install.sh | bash
-```
+### Lưu ý cài đặt
 
-Script **idempotent** — chạy lại bao nhiêu lần cũng an toàn. Nó tự `.bak` mọi file cũ, tự nhận diện Magisk/Termux, tạo venv từ lock Android, copy `service.d/` + scripts + skills, và chạy `sh -n` kiểm tra cú pháp mọi script trước khi xong.
+Hãy đọc [`install.sh`](install.sh) trước khi chạy. Mặc định script dùng các đường dẫn `/data/local/hermes-home`, `/data/local/hermes-venv` và `/data/local/hermes-agent`; các script trong `service.d/` dùng đường dẫn/lệnh dành cho Magisk và root. Ứng dụng Termux thông thường không có quyền ghi vào các vị trí đó. Chỉ đặt `HERMES_HOME` không biến các script boot hard-code thành bản cài không-root.
 
-Sau đó khai báo secret một lần:
+Installer **không** tạo tài khoản provider hoặc cấp thông tin đăng nhập hợp lệ. Hãy tự cấu hình Hermes Agent và lưu secret trên thiết bị theo hướng dẫn của dự án upstream và provider đã chọn. Không commit token, cấu hình riêng tư, dữ liệu phiên hoặc log chưa che thông tin nhạy cảm.
 
-```sh
-# ~/.hermes-home/.env  (đã được gitignore)
-OPENROUTER_API_KEY=sk-or-...
-TELEGRAM_BOT_TOKEN=123456:ABC...
-```
+Nếu dùng Termux thông thường không root, hãy đọc [`docs/NO-ROOT.md`](docs/NO-ROOT.md) trước. Đây là lộ trình thủ công và hiện chưa được installer hỗ trợ.
 
-Reboot máy → mở Telegram → nhắn cho bot. Xong.
+### Những điều không nên mặc định
 
-### Model miễn phí
+- **Không tương đương root:** repo chưa tích hợp Shizuku; Shizuku không biến các shell script này thành script có quyền root.
+- **Không bảo đảm chạy 24/7:** quản lý pin của Android, giới hạn riêng của hãng, mạng, nhiệt độ và dịch vụ bên ngoài đều có thể làm gián đoạn.
+- **Không bảo đảm tự phục hồi:** launcher hiện ghi log gateway vào `/data/local/tmp/hermes.log`, trong khi watchdog kiểm tra `/data/local/hermes-home/logs/gateway.log`. Hãy xem watchdog là thử nghiệm; lệch đường dẫn log khiến nó không phải bằng chứng đáng tin cậy về trạng thái hay khả năng khôi phục gateway.
+- **Xem kỹ helper mạng tùy chọn:** `02-adbd.sh` thử bật ADB qua TCP ở cổng 5555; không bật gỡ lỗi từ xa trên mạng không tin cậy. `04-doh.sh` dùng quy tắc `iptables` cần root.
+- **Lưu ý web UI:** web UI không có xác thực. Chỉ dùng trong LAN/Tailscale đáng tin cậy; không mở trực tiếp cổng 3000 ra Internet công cộng. Xem [`web/README.md`](web/README.md).
+- **Lưu ý sao lưu:** nếu thiếu công cụ/địa chỉ mã hóa, `scripts/backup.sh` có cảnh báo nhưng vẫn có thể để lại archive chưa mã hóa trên máy. Đọc [`docs/BACKUP.md`](docs/BACKUP.md) trước khi dùng tùy chọn sao lưu từ xa.
 
-Repo này **chỉ** dùng model free. Không bao giờ dùng key trả phí.
+### Ghi chú dự án
 
-| Vai trò | Model |
-|---|---|
-| **Mặc định** | `baidu/ernie-5.5-flash-preview:free` |
-| **Dự phòng 1** | `inclusionai/ling-3.2-flash:free` |
-| **Dự phòng 2** | `particle-ai/particle-1:free` |
+- [Ghi chú thiết bị và báo cáo test hiện có](docs/DEVICES.md)
+- [Hướng dẫn thủ công không root: Termux:Boot và Shizuku](docs/NO-ROOT.md)
+- [Hướng dẫn sao lưu](docs/BACKUP.md)
+- [Hướng dẫn web UI](web/README.md)
+- [Đóng góp](CONTRIBUTING.md)
+- [Giấy phép](LICENSE)
 
-Đặt bằng:
-
-```sh
-hermes config set model.default baidu/ernie-5.5-flash-preview:free
-hermes config set model.provider openrouter
-```
-
-> Lỗi menu `/model` cache 63 con? Xóa cache: `hermes config clear model_cache` (chi tiết trong [`BI-KIP.md`](BI-KIP.md)).
-
-### Cơ chế tự phục hồi
-
-- **`02-adbd.sh`** — bật lại ADB qua TCP (tùy chọn, để truy cập từ xa).
-- **`03-nowake.sh`** — `svc power stayon true` + tắt Doze, Android không bao giờ ngủ process.
-- **`04-doh.sh`** — DNS-over-HTTPS + iptables NAT :53 (mở khóa Telegram/DNS).
-- **`05-watchdog.sh`** — mỗi 300s hồi sinh doh / gateway / tailscale nếu chết (kiểm tra cả PID **lẫn** dòng `Connected to Telegram`).
-- **`hermes.sh`** — khởi động gateway khi boot.
-- **`preflight_venv.sh`** — đối chiếu venv với lock, tự sửa khi lệch.
-
-### Web UI (chat từ laptop, không cần bật laptop)
-
-Thích dùng trình duyệt? [`web/`](web/) chạy một web chat nhỏ ở cổng **3000** qua Tailscale, khởi động bằng `nohup` + watchdog canh — không cần `tmux`. Xem [`web/README.md`](web/README.md).
-
-### Sao lưu
-
-[`scripts/backup.sh`](scripts/backup.sh) mã hóa `.env`, `auth.json`, `config.yaml`, `sessions/` thành archive mã hóa age rồi đẩy lên repo **private** (hoặc Google Drive qua `rclone`). **Không bao giờ** đẩy secret lên repo public này. Xem [`docs/BACKUP.md`](docs/BACKUP.md).
-
-### Cấu trúc repo
-
-```
-hermes-android/
-├── README.md              # bạn đang đọc
-├── BI-KIP.md              # bí kíp: lệnh, lỗi, cách sửa
-├── install.sh             # installer idempotent (Magisk + Termux)
-├── service.d/             # script boot Magisk (root)
-├── scripts/               # preflight_venv, backup, make_lock
-├── locks/                 # ghim requirements venv (an toàn Android)
-├── skills/                # skill Hermes (sys-status, sys-logs, ...)
-├── web/                   # web chat (Tailscale :3000)
-└── docs/                  # DEVICES.md, BACKUP.md
-```
-
-### Đóng góp
-
-PR hoan nghênh — nhất là báo cáo máy mới cho [`docs/DEVICES.md`](docs/DEVICES.md). Giữ nguyên tắc vàng: **model free, không secret trong git**.
-
-### Giấy phép
-
-MIT — dùng thoải mái, không bảo hành. Xem [`LICENSE`](LICENSE).
-
----
-
-## ❓ FAQ
-
-**Q: Điện thoại cũ có đủ khỏe không?**
-Có. Chỉ cần chạy 1 process Python + giữ kết nối Telegram. RAM 6GB+ là dư; OnePlus 11R (16GB) dư sức. 3GB vẫn chạy nhưng nên chọn bản nhẹ.
-
-**Q: Tốn điện không?**
-Tương đương một bóng đèn LED nhỏ. Cắm sạc + `stayon` là xong.
-
-**Q: Android có tự kill app không?**
-`03-nowake.sh` tắt Doze/battery optimization cho Hermes, watchdog `05-watchdog.sh` hồi sinh mỗi 5 phút. Bất tử qua reboot.
-
-**Q: Model free có đủ xài không?**
-Đủ cho chat, tóm tắt, viết lách, assistant cá nhân. Không bằng GPT-4o cho code nặng, nhưng free 100% và không giới hạn token.
-
-**Q: Làm sao truy cập từ xa?**
-Qua Telegram (mọi lúc mọi nơi) hoặc web UI qua Tailscale (`web/`).
-
-**Q: Có an toàn không? Key có bị lộ không?**
-`.env`, `auth.json`, `config.yaml`, `sessions/` đều nằm trong `.gitignore`. `scripts/backup.sh` mã hóa age trước khi đẩy lên repo private.
-
-**Q: Không root được thì sao?**
-Vẫn chạy được trên Termux thuần, nhưng thiếu mấy script `service.d/` (root). Xem `install.sh` phần auto-detect.
-
-**Q: Điện thoại mới, chưa root, làm sao bắt đầu?**
-Root bằng Magisk theo `docs/DEVICES.md` cho đúng dòng máy của bạn, rồi chạy lệnh cài 1 dòng ở trên.
-
----
-
-<div align="center">
-  <sub>Made with ❤️ for the "one more old phone in the drawer" gang.</sub>
-</div>
+Tệp `docs/demo-telegram.svg` hiện có là **mockup minh họa**, không phải ảnh chụp trực tiếp hay bằng chứng cho số liệu telemetry. Repo chưa có footage video thật.
